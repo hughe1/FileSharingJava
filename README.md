@@ -7,6 +7,13 @@ This README would normally document whatever steps are necessary to get your app
 * COMP90015 Distributed Systems 2017 Semester 1 Repository
 * Project 1: EZShare
 
+### Group Members ###
+
+* Bobby
+* Hugo
+* Annie
+* Alexandra
+
 ### How do I get set up? ###
 
 * Summary of set up
