@@ -14,20 +14,18 @@ This README would normally document whatever steps are necessary to get your app
 * Annie
 * Alexandra
 
-### How do I get set up? ###
+### Project Plan - 25/03/2017 ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* The aim of the project (few sentences)
+* A high-level task breakdown to achieve the aim
+* Assignment of tasks to individuals in the group
+* Expected completion of tasks
 
 ### Contribution guidelines ###
 
-* Writing tests
-* Code review
-* Other guidelines
+* Perhaps we will set up a queue of tasks? Trello will let us do this: https://trello.com/
+* We can all create/complete tasks once we set up
+* We could decide tasks/jobs during a regular meeting
 
 ### Who do I talk to? ###
 
