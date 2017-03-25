@@ -12,7 +12,7 @@ This README would normally document whatever steps are necessary to get your app
 * Bobby - bkoteski88@gmail.com
 * Hugo
 * Annie
-* Alexandra
+* Alexandra - alexandra.fritzen@tum.de
 
 ### Project Plan - 25/03/2017 ###
 
