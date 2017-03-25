@@ -14,12 +14,12 @@ This README would normally document whatever steps are necessary to get your app
 * Annie
 * Alexandra - alexandra.fritzen@tum.de
 
-### Project Plan - 25/03/2017 ###
+### Project Plan - due 31/03/2017 ###
 
-* The aim of the project (few sentences)
-* A high-level task breakdown to achieve the aim
-* Assignment of tasks to individuals in the group
-* Expected completion of tasks
+# The aim of the project (few sentences) #
+# A high-level task breakdown to achieve the aim #
+# Assignment of tasks to individuals in the group #
+# Expected completion of tasks #
 
 ### Contribution guidelines ###
 
