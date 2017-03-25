@@ -4,7 +4,7 @@ This README would normally document whatever steps are necessary to get your app
 
 ### What is this repository for? ###
 
-* COMP90015 Distributed Systems 2017 Semester 1 Repository
+* COMP90015 Distributed Systems 2017 Semester 1
 * Project 1: EZShare
 
 ### Group Members ###
