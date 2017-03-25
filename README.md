@@ -11,7 +11,7 @@ This README would normally document whatever steps are necessary to get your app
 
 * Bobby - bkoteski88@gmail.com
 * Hugo
-* Annie
+* Annie - az22d4@gmail.com
 * Alexandra - alexandra.fritzen@tum.de
 
 ### Project Plan - due 31/03/2017 ###
