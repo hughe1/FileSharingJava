@@ -22,7 +22,7 @@ public class ServerArgs extends ArgsManager {
 			// check to see if at least one argument was provided
 			if (args.length == 0) throw new ParseException("zero arguments were supplied");
 		} catch (ParseException e) {
-			printArgsHelp();
+			this.printArgsHelp();
 		}
 	}
 	
