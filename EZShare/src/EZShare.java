@@ -1,9 +1,9 @@
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import org.apache.commons.lang3.tuple.ImmutableTriple;
+import java.util.HashSet;
 
 import EZShare.Command;
+import EZShare.Resource;
 import EZShare.ServerInfo;
 
 public class EZShare {
@@ -22,12 +22,12 @@ public class EZShare {
 //		System.out.println(exchange.toJson());
 //		System.out.println(copyExchange.toJsonPretty());
 		
-		ImmutableTriple<String,String,String> trip = new ImmutableTriple<>("","","google.com");
-		ImmutableTriple<String,String,String> trip2 = new ImmutableTriple<>("","","google.com");
-		System.out.println(trip);
-		HashMap<ImmutableTriple<String,String,String>,Integer> map = new HashMap<>();
-		map.put(trip, 10);
-		System.out.println(map.containsKey(trip2));
+		HashSet<Resource> map = new HashSet<>();
+		Resource r1 = new Resource();
+		Resource r2 = new Resource();
+		r2.uri = "google.com";
+		map.add(r1);
+		System.out.println(map.contains(r2));
 	}
 
 }
