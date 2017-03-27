@@ -9,8 +9,8 @@ import com.google.gson.GsonBuilder;
  * to a JSON string. Two options available, 1. to standard one line JSON and
  * for convenience options 2. toJsonPretty() for printing to the console.
  * 
- * @ref gson-2.8.0.jar required in project. available from 
- * @link https://mvnrepository.com/artifact/com.google.code.gson/gson
+ * gson-2.8.0.jar required in project. available from 
+ * https://mvnrepository.com/artifact/com.google.code.gson/gson
  * 
  * @author Koteski, B
  */
