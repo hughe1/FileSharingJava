@@ -24,7 +24,7 @@ public class Resource extends JsonModel {
 	public Integer resourceSize;
 	
 	@Override
-	public JsonModel fromJson(String json) {
+	public Resource fromJson(String json) {
 		return g.fromJson(json, Resource.class);
 	}
 

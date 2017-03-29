@@ -15,4 +15,5 @@ public class Command extends JsonModel {
 	public Command fromJson(String json) {
 		return g.fromJson(json, Command.class);
 	}
+	
 }
