@@ -29,7 +29,7 @@ public class ServerArgs extends ArgsManager {
 	@Override
 	public void printArgsHelp() {
 		// print the help menu
-		this.formater.printHelp("Server", this.options);
+		this.formatter.printHelp("Server", this.options);
 		// exit the program entirely
 		System.exit(1);
 	}
