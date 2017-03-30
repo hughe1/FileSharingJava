@@ -33,5 +33,16 @@ public class ClientArgs extends ArgsManager {
 			this.printArgsHelp("Client\n");
 		}
 	}
+<<<<<<< HEAD
+=======
+
+	@Override
+	public void printArgsHelp() {
+		// print to screen the arguments
+		this.formatter.printHelp("Client", this.options);
+		// exit the program entirely
+		System.exit(1);
+	}
+>>>>>>> 74f791b832536697885f84cc404a435dd7edf3f5
 	
 }

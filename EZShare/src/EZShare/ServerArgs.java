@@ -25,5 +25,16 @@ public class ServerArgs extends ArgsManager {
 			this.printArgsHelp("Server: zero arguments were supplied\n");
 		}
 	}
+<<<<<<< HEAD
+=======
+	
+	@Override
+	public void printArgsHelp() {
+		// print the help menu
+		this.formatter.printHelp("Server", this.options);
+		// exit the program entirely
+		System.exit(1);
+	}
+>>>>>>> 74f791b832536697885f84cc404a435dd7edf3f5
 
 }
