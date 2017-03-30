@@ -7,7 +7,7 @@ import org.apache.commons.cli.Options;
 public abstract class ArgsManager {
 	
 	protected Options options = new Options();
-	protected HelpFormatter formater = new HelpFormatter();
+	protected HelpFormatter formatter = new HelpFormatter();
 	protected CommandLine cmd = null;
 	
 	/**
