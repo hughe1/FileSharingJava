@@ -23,6 +23,31 @@ public class Resource extends JsonModel {
 	public String ezserver;
 	public Integer resourceSize;
 	
+	/**
+	 * Default constructor
+	 */
+	public Resource() {
+		
+	}
+	
+	/**
+	 * Convenient constructor that will make a resource based on the user inputs.
+	 * 
+	 * @param clientArgs
+	 */
+	public Resource(ClientArgs clientArgs) {
+		this.name = clientArgs.getOptionValue("name");
+		this.addTags(clientArgs.getOptionValue("tags"));
+		this.description = clientArgs.getOptionValue("description");
+		this.uri = clientArgs.getOptionValue("uri");
+		this.channel = clientArgs.getOptionValue("channel");
+		this.owner = clientArgs.getOptionValue("owner");
+		this.ezserver = clientArgs.getOptionValue("ezserver");
+	}
+	
+	/**
+	 * 
+	 */
 	@Override
 	public Resource fromJson(String json) {
 		return g.fromJson(json, Resource.class);

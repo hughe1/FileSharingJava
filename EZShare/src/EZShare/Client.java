@@ -1,11 +1,18 @@
 package EZShare;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 /**
  * The class contains functionality to parse command-line arguments according to
  * the assignment specifications. Additionally, it can also communicate with an
  * EZShare.Server that is listening for EZShare.Client, according to the protocol
  * defined in the assignment specifications.
+ * 
+ * Aaron's server: sunrise.cis.unimelb.edu.au:3780
  * 
  * @author Koteski, B
  *
@@ -16,50 +23,63 @@ public class Client {
 	
 	public static void main(String[] args) {
 		Client client = new Client(args);
-		client.parseCommand();
+		
+		Command command = client.parseCommand();
+		ServerInfo serverInfo = client.parseServerInfo();
+		
+		System.out.println(command.toJsonPretty());
+		System.out.println(serverInfo);
+		
+		try {
+			Socket socket = new Socket(serverInfo.getHostname(),serverInfo.getPort());
+			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
+			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+			
+			outToServer.writeUTF(command.toJson());
+			
+			boolean run = false;
+			do {
+				String fromServer = inFromServer.readUTF();
+				if(fromServer.contains("success")) run = true;
+				if(fromServer.contains("resultSize")) run = false;
+				System.out.println(fromServer);
+			} while (run);
+			
+			
+			socket.close();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
+
 	/**
 	 * Constructor for Client
 	 * 
 	 * @param args String[] command line arguments
 	 */
 	public Client(String[] args) {
-		clientArgs = new ClientArgs(args);
+		clientArgs = new ClientArgs(args);		
 	}
 	
 	/**
-	 * Examines the command line arguments
 	 * 
-	 * @return Command object encapsulating the arguments provided
+	 * @return
 	 */
 	public Command parseCommand() {
-		if(clientArgs.hasOption("fetch")) {
-			System.out.println("fetch command found");
-		}
-		else if(clientArgs.hasOption("query")) {
-			System.out.println("query command found");
-			// get port
-			if(!clientArgs.hasOption("port")) {
-				clientArgs.printArgsHelp("port arg not provided\n");
-			}
-			int port = 0;
-			try {
-				port = Integer.parseInt(clientArgs.cmd.getOptionValue("port"));	
-			} catch(NumberFormatException e) {
-				clientArgs.printArgsHelp("port not a valid number\n");
-			}
-			
-			// get host
-			if(!clientArgs.cmd.hasOption("host")) {
-				clientArgs.printArgsHelp("host arg not provided\n");
-			}
-			String host = clientArgs.cmd.getOptionValue("host");
-			Command command = new Command().buildQuery(clientArgs);
-			System.out.println(command.toJsonPretty());
-			
-		}
-		return null;
+		return new Command(clientArgs);
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public ServerInfo parseServerInfo() {
+		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
 	
 }

@@ -5,6 +5,10 @@ import org.apache.commons.cli.ParseException;
 
 public class ClientArgs extends ArgsManager {
 	
+	/**
+	 * 
+	 * @param args
+	 */
 	public ClientArgs(String[] args) {
 		// builds the client argument options
 		this.options.addOption("channel",true,"channel");
@@ -32,6 +36,28 @@ public class ClientArgs extends ArgsManager {
 		} catch (ParseException e) {
 			this.printArgsHelp("Client\n");
 		}
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public Integer getSafePort() {
+		if(!this.hasOption("port")) {
+			return 3780; // default port
+		}
+		return Integer.parseInt(this.getOptionValue("port"));
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public String getSafeHost() {
+		if(!this.hasOption("host")) {
+			return "localhost"; // default host
+		}
+		return this.getOptionValue("host");
 	}
 	
 }
