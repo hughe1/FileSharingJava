@@ -5,9 +5,6 @@ public class Server {
 	
 	private ServerArgs serverArgs;
 	
-<<<<<<< HEAD
-	
-=======
 	public static void main(String[] args) {
 		Server server = new Server(args);
 		server.parseCommand();
@@ -41,7 +38,6 @@ public class Server {
 	/**
 	 * 
 	 */
->>>>>>> 74f791b832536697885f84cc404a435dd7edf3f5
 	public void listen() {
 		System.out.println("listening...");
 
