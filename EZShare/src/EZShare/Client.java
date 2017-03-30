@@ -34,11 +34,30 @@ public class Client {
 	 * @return Command object encapsulating the arguments provided
 	 */
 	public Command parseCommand() {
-		if(clientArgs.cmd.hasOption("fetch")) {
+		if(clientArgs.hasOption("fetch")) {
 			System.out.println("fetch command found");
 		}
-		else if(clientArgs.cmd.hasOption("query")) {
+		else if(clientArgs.hasOption("query")) {
 			System.out.println("query command found");
+			// get port
+			if(!clientArgs.hasOption("port")) {
+				clientArgs.printArgsHelp("port arg not provided\n");
+			}
+			int port = 0;
+			try {
+				port = Integer.parseInt(clientArgs.cmd.getOptionValue("port"));	
+			} catch(NumberFormatException e) {
+				clientArgs.printArgsHelp("port not a valid number\n");
+			}
+			
+			// get host
+			if(!clientArgs.cmd.hasOption("host")) {
+				clientArgs.printArgsHelp("host arg not provided\n");
+			}
+			String host = clientArgs.cmd.getOptionValue("host");
+			Command command = new Command().buildQuery(clientArgs);
+			System.out.println(command.toJsonPretty());
+			
 		}
 		return null;
 	}

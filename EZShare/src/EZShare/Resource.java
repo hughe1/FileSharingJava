@@ -15,7 +15,7 @@ import java.util.ArrayList;
 
 public class Resource extends JsonModel {
 	public String name;
-	public ArrayList<String> tags;
+	private ArrayList<String> tags;
 	public String description;
 	public String uri; // use URI class here
 	public String channel;
@@ -69,6 +69,21 @@ public class Resource extends JsonModel {
 		} else if (!uri.equals(other.uri))
 			return false;
 		return true;
-	}	
+	}
+	
+	/**
+	 * This method spits tags with delimiter "," and loops through each
+	 * resulting token and adds it to the tags list if tokens exist.
+	 * 
+	 * @param tags has form tag1,tag2,tag3,...
+	 */
+	public void addTags(String tags) {
+		if(tags == null) return;
+		String[] tokens = tags.split(",");
+		this.tags = new ArrayList<String>();
+		for (String token : tokens) {
+			this.tags.add(token);
+		}
+	}
 
 }

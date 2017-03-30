@@ -6,9 +6,7 @@ import org.apache.commons.cli.ParseException;
 public class ClientArgs extends ArgsManager {
 	
 	public ClientArgs(String[] args) {
-		/**
-		 * builds the client argument options
-		 */
+		// builds the client argument options
 		this.options.addOption("channel",true,"channel");
 		this.options.addOption("debug",false,"print debug information");
 		this.options.addOption("description",true,"resource description");
@@ -26,24 +24,14 @@ public class ClientArgs extends ArgsManager {
 		this.options.addOption("share",false,"share resource on server");
 		this.options.addOption("tags",true,"resource tags, tag1,tag2,tag3,...");
 		this.options.addOption("uri",true,"resource URI");
-		/**
-		 * attempts to parse the args otherwise print help menu and exit
-		 */
+		// attempts to parse the args otherwise print help menu and exit
 		try {
 			this.cmd = new DefaultParser().parse(options, args);
 			// see if at least one argument was provided
-			if(args.length == 0) throw new ParseException("zero arguments were supplied");
+			if(args.length == 0) throw new ParseException("zero arguments supplied");
 		} catch (ParseException e) {
-			this.printArgsHelp();
+			this.printArgsHelp("Client\n");
 		}
-	}
-
-	@Override
-	public void printArgsHelp() {
-		// print to screen the arguments
-		this.formater.printHelp("Client", this.options);
-		// exit the program entirely
-		System.exit(1);
 	}
 	
 }

@@ -22,16 +22,8 @@ public class ServerArgs extends ArgsManager {
 			// check to see if at least one argument was provided
 			if (args.length == 0) throw new ParseException("zero arguments were supplied");
 		} catch (ParseException e) {
-			this.printArgsHelp();
+			this.printArgsHelp("Server: zero arguments were supplied\n");
 		}
-	}
-	
-	@Override
-	public void printArgsHelp() {
-		// print the help menu
-		this.formater.printHelp("Server", this.options);
-		// exit the program entirely
-		System.exit(1);
 	}
 
 }
