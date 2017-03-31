@@ -7,13 +7,13 @@ public class ServerArgs extends ArgsManager {
 
 	public ServerArgs(String[] args) {
 		/**
-		 * add all of the argument options for the server 
+		 * add all of the argument options for the server
 		 */
-		this.options.addOption("advertisedhostname",true,"advertised hostname");
-		this.options.addOption("connectionintervallimit",true,"connection interval limit in seconds");
+		this.options.addOption("advertisedhostname", true, "advertised hostname");
+		this.options.addOption("connectionintervallimit", true, "connection interval limit in seconds");
 		this.options.addOption("port", true, "server port, an integer");
 		this.options.addOption("secret", true, "secret");
-		this.options.addOption("debug",false,"print debug information");		
+		this.options.addOption("debug", false, "print debug information");
 		/**
 		 * try and parse the options, otherwise print a help menu and exit
 		 */
