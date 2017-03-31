@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
 /**
@@ -32,6 +33,7 @@ public class Client {
 		
 		try {
 			Socket socket = new Socket(serverInfo.getHostname(),serverInfo.getPort());
+			socket.setSoTimeout(5000);
 			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 			
@@ -40,19 +42,22 @@ public class Client {
 			boolean run = false;
 			do {
 				String fromServer = inFromServer.readUTF();
-				if(fromServer.contains("success")) run = true;
-				if(fromServer.contains("resultSize")) run = false;
+//				if(fromServer.contains("success")) run = true;
+//				if(fromServer.contains("resultSize")) run = false;
 				System.out.println(fromServer);
 			} while (run);
 			
 			
 			socket.close();
+		} catch(SocketTimeoutException e) {
+			System.out.println("socket timed out...");
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			// e.printStackTrace();
+			System.out.println("IOException");
 		}
 	}
 	
