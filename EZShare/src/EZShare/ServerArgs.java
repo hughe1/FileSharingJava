@@ -19,11 +19,39 @@ public class ServerArgs extends ArgsManager {
 		 */
 		try {
 			this.cmd = new DefaultParser().parse(options, args);
+
+			// Alex: Don't think this is necessary since server should able to
+			// be started with just java -cp ezshare.jar EZShare.Server
 			// check to see if at least one argument was provided
-			if (args.length == 0) throw new ParseException("zero arguments were supplied");
+			// if (args.length == 0) throw new ParseException("zero arguments
+			// were supplied");
 		} catch (ParseException e) {
-			this.printArgsHelp("Server: zero arguments were supplied\n");
+			// Alex: Don't think this is necessary since server should able to
+			// be started with just java -cp ezshare.jar EZShare.Server
+			// this.printArgsHelp("Server: zero arguments were supplied\n");
 		}
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public Integer getSafePort() {
+		if (!this.hasOption("port")) {
+			return 3780; // default port
+		}
+		return Integer.parseInt(this.getOptionValue("port"));
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public String getSafeHost() {
+		if (!this.hasOption("host")) {
+			return "localhost"; // default host
+		}
+		return this.getOptionValue("host");
 	}
 
 }
