@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
 /**
@@ -27,7 +28,8 @@ public class Client {
 			String[] args2 = { "-query", "-channel", "myprivatechannel", "-debug" };
 			args = args2;
 		}
-
+		
+//		String[] args2 = { "-exchange", "-servers", "host1:sadf"};
 		Client client = new Client(args);
 
 		Command command = client.parseCommand();
@@ -38,15 +40,17 @@ public class Client {
 
 		try {
 			Socket socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+			socket.setSoTimeout(5000); // wait for 10 seconds
 			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
 			outToServer.writeUTF(command.toJson());
 
+			// TODO processing the responses in a better way
 			boolean run = false;
 			do {
 				String fromServer = inFromServer.readUTF();
-				if (fromServer.contains("success"))
+				if (fromServer.contains("success") && command.command.equals("QUERY") || command.command.equals("FETCH"))
 					run = true;
 				if (fromServer.contains("resultSize"))
 					run = false;
@@ -57,6 +61,8 @@ public class Client {
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (SocketTimeoutException e) {
+			System.out.println(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
