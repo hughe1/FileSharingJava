@@ -19,7 +19,7 @@ import EZShare.Resource;
  * 
  */
 
-public class EZShare {
+public class Main {
 
 	public static void main(String[] args) {
 		
