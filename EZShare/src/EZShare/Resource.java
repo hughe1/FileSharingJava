@@ -6,7 +6,7 @@ import java.util.ArrayList;
  * The class models the Resource json object as specified in the assignment.
  * the class implements hashCode and equals so that objects can be easily
  * hashed/compared when comparing against other Resource objects. Here the tuple
- * (owner,channel,uri) is used as a PrimaryKey to identify the object.
+ * (channel,uri) is used as a PrimaryKey to identify the object.
  * 
  * Class additionally extends JsonModel for for easy to/from JSON functionality.
  * 
@@ -31,7 +31,8 @@ public class Resource extends JsonModel {
 	}
 	
 	/**
-	 * Convenient constructor that will make a resource based on the user inputs.
+	 * Convenient constructor for Client that will make a resource based on
+	 * the user inputs.
 	 * 
 	 * @param clientArgs
 	 */
@@ -53,6 +54,7 @@ public class Resource extends JsonModel {
 		return g.fromJson(json, Resource.class);
 	}
 
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */
@@ -60,8 +62,7 @@ public class Resource extends JsonModel {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((name == null) ? 0 : name.hashCode());
-		result = prime * result + ((owner == null) ? 0 : owner.hashCode());
+		result = prime * result + ((channel == null) ? 0 : channel.hashCode());
 		result = prime * result + ((uri == null) ? 0 : uri.hashCode());
 		return result;
 	}
@@ -78,15 +79,10 @@ public class Resource extends JsonModel {
 		if (getClass() != obj.getClass())
 			return false;
 		Resource other = (Resource) obj;
-		if (name == null) {
-			if (other.name != null)
+		if (channel == null) {
+			if (other.channel != null)
 				return false;
-		} else if (!name.equals(other.name))
-			return false;
-		if (owner == null) {
-			if (other.owner != null)
-				return false;
-		} else if (!owner.equals(other.owner))
+		} else if (!channel.equals(other.channel))
 			return false;
 		if (uri == null) {
 			if (other.uri != null)
@@ -95,7 +91,7 @@ public class Resource extends JsonModel {
 			return false;
 		return true;
 	}
-	
+
 	/**
 	 * This method spits tags with delimiter "," and loops through each
 	 * resulting token and adds it to the tags list if tokens exist.
@@ -109,6 +105,17 @@ public class Resource extends JsonModel {
 		for (String token : tokens) {
 			this.tags.add(token);
 		}
+	}
+	
+	/**
+	 * Convenience method for Server. Can call this to easily compare 
+	 * incoming resource objects from client.
+	 * 
+	 * @return "" if owner is null, otherwise return the owner
+	 */
+	public String getSafeOwner() {
+		if (this.owner==null) return "";
+		else return this.owner;
 	}
 
 }

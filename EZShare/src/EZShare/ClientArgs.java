@@ -35,7 +35,8 @@ public class ClientArgs extends ArgsManager {
 			if (args.length == 0)
 				throw new ParseException("zero arguments supplied");
 		} catch (ParseException e) {
-			this.printArgsHelp("Client\n");
+			System.out.println(e.getMessage());
+			this.printArgsHelp("Client");
 		}
 	}
 

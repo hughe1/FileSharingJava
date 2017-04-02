@@ -21,6 +21,7 @@ import java.net.UnknownHostException;
 public class Client {
 
 	private ClientArgs clientArgs;
+	public static final int TIME_OUT_LIMIT = 5000;
 
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
@@ -40,7 +41,7 @@ public class Client {
 
 		try {
 			Socket socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
-			socket.setSoTimeout(5000); // wait for 10 seconds
+			socket.setSoTimeout(TIME_OUT_LIMIT); // wait for 5 seconds
 			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
@@ -94,5 +95,13 @@ public class Client {
 	public ServerInfo parseServerInfo() {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
-
+	
+	
+	/**
+	 * 
+	 */
+	public void processServerResponse() {
+		
+	}
+	
 }

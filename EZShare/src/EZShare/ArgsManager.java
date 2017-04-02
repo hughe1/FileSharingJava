@@ -15,7 +15,7 @@ public abstract class ArgsManager {
 	 */
 	public void printArgsHelp(String msg) {
 		// print to screen the arguments
-		this.formatter.printHelp(msg, this.options);
+		this.formatter.printHelp(msg, this.options, true);
 		// exit the program entirely
 		System.exit(1);
 	}

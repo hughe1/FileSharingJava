@@ -1,22 +1,23 @@
 package Test;
 
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import EZShare.Resource;
+
 public class LambdaTest {
 
 	public static void main(String[] args) {
-//		Method m1 = new Method();
-//		
-//		new Thread(m1).start();
-//		System.out.println("HELLO");
-
-		new Thread(()->doSomething(100)).start();
+		Consumer<Resource> c = System.out::println;
+		c.accept(new Resource());
+		BiFunction<Integer,Integer, Resource> c1 = LambdaTest::getInt;
+		System.out.println(c1.apply(5, 5));
 	}
 	
-	private static int doSomething(int limit) {
-		int sum = 0;
-		for(int i = 1; i<=limit; i++) {
-			sum += i;
-		}
-		return sum;
+	public static Resource getInt(int a, int b) {
+		System.out.println(a + b);
+		return new Resource();
 	}
 	
 }
