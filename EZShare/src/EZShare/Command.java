@@ -39,6 +39,8 @@ public class Command extends JsonModel {
 			buildExchange(clientArgs);
 		else if (clientArgs.hasOption("remove"))
 			buildRemove(clientArgs);
+		else 
+			buildInvalid(clientArgs);
 	}
 
 	@Override
@@ -130,6 +132,11 @@ public class Command extends JsonModel {
 			clientArgs.printArgsHelp("");
 		this.command = "REMOVE";
 		this.resource = new Resource(clientArgs);
+		return this;
+	}
+	
+	public Command buildInvalid(ClientArgs clientArgs) {
+		this.command = "INVALID";
 		return this;
 	}
 	

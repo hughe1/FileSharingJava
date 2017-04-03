@@ -12,15 +12,34 @@ import java.util.function.Consumer;
 
 import javax.net.ServerSocketFactory;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class Server {
 
 	private ServerArgs serverArgs;
-	private HashMap<Resource,String> resources = new HashMap<>();
-	private HashMap<String,Consumer<Command>> processManager = new HashMap<>();
+	private HashMap<Resource, String> resources = new HashMap<>();
+	private HashMap<String, Consumer<Command>> processManager = new HashMap<>();
 	public static final int TIME_OUT_LIMIT = 5000;
+	private static Logger logger;
 
 	public static void main(String[] args) {
+		// TODO: Remove if -- solely for testing purposes
+		if (args.length == 0) {
+			String[] args2 = { "-debug" };
+			args = args2;
+		}
+
 		Server server = new Server(args);
+
+		if (server.serverArgs.hasOption("debug")) {
+			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
+		} else {
+			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
+		}
+		logger = LogManager.getRootLogger();
+		logger.debug("Debugger enabled");
+
 		server.parseCommand();
 		server.listen();
 	}
@@ -28,12 +47,14 @@ public class Server {
 	/**
 	 * Constructor for Server
 	 * 
-	 * @param args String[] command line arguments
+	 * @param args
+	 *            String[] command line arguments
 	 */
 	public Server(String[] args) {
 		serverArgs = new ServerArgs(args);
 		// TODO: populate resources from file/Database
 		processManager.put("PUBLISH", this::processPublish);
+		processManager.put("QUERY", this::processQuery);
 	}
 
 	/**
@@ -43,10 +64,13 @@ public class Server {
 	 */
 	public Command parseCommand() {
 		if (serverArgs.cmd.hasOption("advertisedhostname")) {
-			System.out.println("advertisedhostname command found");
+			logger.debug("Advertised hostname command found");
 		} else if (serverArgs.cmd.hasOption("port")) {
-			System.out.println("port command found");
+			logger.debug("Port command found");
 		}
+
+		logger.info("Using advertised hostname " + this.serverArgs.getSafeHost());
+		logger.info("Bound to port " + this.serverArgs.getSafePort());
 		return null;
 	}
 
@@ -58,14 +82,15 @@ public class Server {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
 
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
-			System.out.println("Listening for request...");
+			logger.info("Listening for request...");
 
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
-				System.out.println("Received request");
-				
-				// TODO: replace this with a call to a class that will serve client
+				logger.info("Received request");
+
+				// TODO: replace this with a call to a class that will serve
+				// client
 				// i.e., implement a runnable class
 				Thread t = new Thread(() -> serveClient(client));
 				t.start();
@@ -73,11 +98,11 @@ public class Server {
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 
 	}
-	
+
 	/**
 	 * 
 	 * @param client
@@ -90,21 +115,42 @@ public class Server {
 
 			String request = input.readUTF();
 			Command command = (new Command()).fromJson(request);
-			System.out.println("Request: " + command.toJson());
-						
+			logger.debug("RECEIVED: " + command.toJson());
+
+			Response response = new Response();
 			// this handles all types of queries
-			this.processManager.get(command.command).accept(command);
-			clientSocket.close();
+			if (this.processManager.containsKey(command.command)) {	
+				this.processManager.get(command.command).accept(command);
+
+				// TODO: Mock-up response, needs actual response from process
+				// manager above
+				response.response = "success";
+			} else if (command.command == "INVALID") {
+				response.response = "error";
+				response.errorMessage = "invalid command";
+			} else {
+				response.response = "error";
+				response.errorMessage = "missing or incorrect type for command";
+			}
 			
+			output.writeUTF(response.toJson());
+			output.flush();
+			logger.debug("SENT: " + response.toJson());
+			clientSocket.close();
+
 		} catch (SocketTimeoutException e) {
-			System.out.println(e.getClass().getName() + " " + e.getMessage());
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 	}
 
 	private void processPublish(Command command) {
+		// TODO Auto-generated method stub
+	}
+
+	private void processQuery(Command command) {
 		// TODO Auto-generated method stub
 	}
 }

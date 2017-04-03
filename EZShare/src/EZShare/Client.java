@@ -7,6 +7,9 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * The class contains functionality to parse command-line arguments according to
  * the assignment specifications. Additionally, it can also communicate with an
@@ -29,15 +32,23 @@ public class Client {
 			String[] args2 = { "-query", "-channel", "myprivatechannel", "-debug" };
 			args = args2;
 		}
-		
-//		String[] args2 = { "-exchange", "-servers", "host1:sadf"};
+
+		// String[] args2 = { "-exchange", "-servers", "host1:sadf"};
 		Client client = new Client(args);
+
+		// Configure logger
+		if (client.clientArgs.hasOption("debug")) {
+			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
+		} else {
+			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
+		}
+		Logger logger = LogManager.getRootLogger();
+		logger.debug("Debugger enabled");
 
 		Command command = client.parseCommand();
 		ServerInfo serverInfo = client.parseServerInfo();
 
-		System.out.println(command.toJsonPretty());
-		System.out.println(serverInfo);
+		logger.debug("Publishing to " + serverInfo);
 
 		try {
 			Socket socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
@@ -46,26 +57,51 @@ public class Client {
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
 			outToServer.writeUTF(command.toJson());
+			outToServer.flush();
+
+			// Doesn't work with the logger due to multiple lines being
+			// generated
+			// logger.info(command.toJsonPretty());
+			logger.debug("SENT: " + command.toJson());
 
 			// TODO processing the responses in a better way
-			boolean run = false;
-			do {
-				String fromServer = inFromServer.readUTF();
-				if (fromServer.contains("success") && command.command.equals("QUERY") || command.command.equals("FETCH"))
-					run = true;
-				if (fromServer.contains("resultSize"))
-					run = false;
-				System.out.println(fromServer);
-			} while (run);
+			// Alex: Commented this out cause it kept giving me error messages
+			// due to the infinite loop created by a success response
+			// TODO: Implement timeout
+			// boolean run = false;
+			// do {
+			// String fromServer = inFromServer.readUTF();
+			// if (fromServer.contains("success") &&
+			// command.command.equals("QUERY")
+			// || command.command.equals("FETCH"))
+			// run = true;
+			// if (fromServer.contains("resultSize"))
+			// run = false;
+			// logger.debug("RECEIVED: " + fromServer);
+			// } while (run);
+
+			boolean run = true;
+			while (run) {
+				if (inFromServer.available() > 0) {
+					String fromServer = inFromServer.readUTF();
+					if (fromServer.contains("success") && command.command.equals("QUERY")
+							|| command.command.equals("FETCH"))
+						run = true;
+					if (fromServer.contains("resultSize"))
+						run = false;
+					logger.debug("RECEIVED: " + fromServer);
+				}
+			}
 
 			socket.close();
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (SocketTimeoutException e) {
-			System.out.println(e.getClass().getName() + " " + e.getMessage());
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -95,13 +131,12 @@ public class Client {
 	public ServerInfo parseServerInfo() {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
-	
-	
+
 	/**
 	 * 
 	 */
 	public void processServerResponse() {
-		
+
 	}
-	
+
 }
