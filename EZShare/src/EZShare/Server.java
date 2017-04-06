@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 public class Server {
 
 	private ServerArgs serverArgs;
-	private HashMap<Resource, String> resources = new HashMap<>();
+	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private HashMap<String, Consumer<Command>> processManager = new HashMap<>();
 	public static final int TIME_OUT_LIMIT = 5000;
 	private static Logger logger;
@@ -92,6 +92,7 @@ public class Server {
 				// TODO: replace this with a call to a class that will serve
 				// client
 				// i.e., implement a runnable class
+				// lambda expression
 				Thread t = new Thread(() -> serveClient(client));
 				t.start();
 			}
