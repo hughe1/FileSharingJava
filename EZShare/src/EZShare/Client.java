@@ -29,7 +29,17 @@ public class Client {
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
-			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.debugOption };
+			// QUERY
+			// String[] args2 = { "-" + Constants.queryOption,
+			// "-" + Constants.channelOption, "myprivatechannel",
+			// "-" + Constants.debugOption };
+
+			// PUBLISH
+			String[] args2 = { "-" + Constants.publishOption, "-" + Constants.nameOption, "Unimelb website",
+					"-" + Constants.descriptionOption, "The main page for the University of Melbourne",
+					"-" + Constants.uriOption, "http://www.unimelb.edu.au", "-" + Constants.tagsOption, "web,html",
+					"-" + Constants.ownerOption, "Alex", "-" + Constants.debugOption };
+
 			args = args2;
 		}
 
@@ -65,33 +75,18 @@ public class Client {
 			logger.debug("SENT: " + command.toJson());
 
 			// TODO processing the responses in a better way
-			// Alex: Commented this out cause it kept giving me error messages
-			// due to the infinite loop created by a success response
 			// TODO: Implement timeout
-			// boolean run = false;
-			// do {
-			// String fromServer = inFromServer.readUTF();
-			// if (fromServer.contains("success") &&
-			// command.command.equals("QUERY")
-			// || command.command.equals("FETCH"))
-			// run = true;
-			// if (fromServer.contains("resultSize"))
-			// run = false;
-			// logger.debug("RECEIVED: " + fromServer);
-			// } while (run);
-
-			boolean run = true;
-			while (run) {
-				if (inFromServer.available() > 0) {
-					String fromServer = inFromServer.readUTF();
-					if (fromServer.contains(Constants.success) && command.command.equals(Constants.queryCommand)
-							|| command.command.equals(Constants.fetchCommand))
-						run = true;
-					if (fromServer.contains("resultSize") || fromServer.contains(Constants.error))
-						run = false;
-					logger.debug("RECEIVED: " + fromServer);
-				}
-			}
+			boolean run = false;
+			do {
+				String fromServer = inFromServer.readUTF();
+				if (fromServer.contains("success") && command.command.equals("QUERY")
+						|| command.command.equals("FETCH"))
+					run = true;
+				if (fromServer.contains("resultSize"))
+					run = false;
+				logger.debug("RECEIVED: " + fromServer);
+				processServerResponse(fromServer);
+			} while (run);
 
 			socket.close();
 		} catch (UnknownHostException e) {
@@ -102,7 +97,6 @@ public class Client {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
-			e.printStackTrace();
 		}
 	}
 
@@ -135,8 +129,7 @@ public class Client {
 	/**
 	 * 
 	 */
-	public void processServerResponse() {
-
+	public static void processServerResponse(String response) {
+		// TODO ?
 	}
-
 }

@@ -6,7 +6,12 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -19,9 +24,9 @@ public class Server {
 
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
-	private HashMap<String, Consumer<Command>> processManager = new HashMap<>();
 	public static final int TIME_OUT_LIMIT = 5000;
 	private static Logger logger;
+	private Response successResponse;
 
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
@@ -53,8 +58,6 @@ public class Server {
 	public Server(String[] args) {
 		serverArgs = new ServerArgs(args);
 		// TODO: populate resources from file/Database
-		processManager.put("PUBLISH", this::processPublish);
-		processManager.put("QUERY", this::processQuery);
 	}
 
 	/**
@@ -118,25 +121,36 @@ public class Server {
 			Command command = (new Command()).fromJson(request);
 			logger.debug("RECEIVED: " + command.toJson());
 
-			Response response = new Response();
-			// this handles all types of queries
-			if (this.processManager.containsKey(command.command)) {	
-				this.processManager.get(command.command).accept(command);
+			if (!parseCommandForErrors(command, output)) {
 
-				// TODO: Mock-up response, needs actual response from process
-				// manager above
-				response.response = "success";
-			} else if (command.command == "INVALID") {
-				response.response = "error";
-				response.errorMessage = "invalid command";
-			} else {
-				response.response = "error";
-				response.errorMessage = "missing or incorrect type for command";
+				switch (command.command) {
+				case Constants.queryCommand:
+					processQueryCommand(command, output);
+					break;
+				case Constants.fetchCommand:
+					processFetchCommand(command, output);
+					break;
+				case Constants.exchangeCommand:
+					processExchangeCommand(command, output);
+					break;
+				case Constants.publishCommand:
+					processPublishCommand(command, output);
+					break;
+				case Constants.shareCommand:
+					processShareCommand(command, output);
+					break;
+				case Constants.removeCommand:
+					processRemoveCommand(command, output);
+					break;
+				case Constants.invalidCommand:
+					processInvalidCommand(command, output);
+					break;
+				default:
+					processMissingOrInvalidCommand(command, output);
+					break;
+				}
 			}
-			
-			output.writeUTF(response.toJson());
-			output.flush();
-			logger.debug("SENT: " + response.toJson());
+
 			clientSocket.close();
 
 		} catch (SocketTimeoutException e) {
@@ -147,11 +161,150 @@ public class Server {
 		}
 	}
 
-	private void processPublish(Command command) {
+	private boolean parseCommandForErrors(Command command, DataOutputStream output) {
+		// "String values must not contain the "\0" character, nor start or end
+		// with whitespace."
+		// "The field must not be the single character "*"."
+		// TODO Check if every possible case is covered
+		boolean errorFound = false;
+
+		ArrayList<String> stringValues = new ArrayList<>();
+		stringValues.add(command.secret);
+		if (command.resource != null) {
+			String[] strings = { command.resource.name, command.resource.description, command.resource.uri,
+					command.resource.channel, command.resource.owner, command.resource.ezserver };
+			stringValues.addAll(Arrays.asList(strings));
+			stringValues.addAll(command.resource.tags);
+		}
+		if (command.resourceTemplate != null) {
+			String[] strings = { command.resourceTemplate.name, command.resourceTemplate.description,
+					command.resourceTemplate.uri, command.resourceTemplate.channel, command.resourceTemplate.owner,
+					command.resourceTemplate.ezserver };
+			stringValues.addAll(Arrays.asList(strings));
+			stringValues.addAll(command.resourceTemplate.tags);
+		}
+
+		for (String value : stringValues) {
+			if (value == null) {
+				// Do nothing
+			} else if (value.equals("*")) {
+				sendResponse(buildErrorResponse("String values cannot be *"), output);
+				errorFound = true;
+				break;
+			} else if (value != value.trim()) {
+				sendResponse(buildErrorResponse("String values cannot start or end with whitespace(s)"), output);
+				errorFound = true;
+				break;
+			} else if (value.contains("\0")) {
+				sendResponse(buildErrorResponse("String values cannot contain \0"), output);
+				errorFound = true;
+				break;
+			}
+		}
+
+		return errorFound;
+	}
+
+	private void processInvalidCommand(Command command, DataOutputStream output) {
+		sendResponse(buildErrorResponse("invalid command"), output);
+	}
+
+	private void processMissingOrInvalidCommand(Command command, DataOutputStream output) {
+		sendResponse(buildErrorResponse("missing or incorrect type for command"), output);
+	}
+
+	private void processPublishCommand(Command command, DataOutputStream output) {
+		logger.debug("PUBLISH command");
+
+		Response response = buildErrorResponse("cannot publish resource");
+
+		// Check for invalid resource fields
+		if (command.resource == null) {
+			response = buildErrorResponse("missing resource");
+		} else if (command.resource.uri == null || command.resource.uri.equals("")) {
+			// "The URI must be present, ..."
+			response = buildErrorResponse("invalid resource - missing uri");
+		} else {
+			try {
+				URI uri = new URI(command.resource.uri);
+
+				if (!uri.isAbsolute()) {
+					// "... must be absolute ..."
+					response = buildErrorResponse("invalid resource - uri must be absolute");
+				} else if (uri.getScheme().equals("file")) {
+					// "... and cannot be a file scheme."
+					response = buildErrorResponse("invalid resource - uri cannot be a file scheme");
+				} else if (this.resources.containsKey(command.resource)
+						&& !this.resources.get(command.resource).equals(command.resource.owner)) {
+					// "Publishing a resource with the same channel and URI but
+					// different owner is not allowed."
+					response = buildErrorResponse("cannot publish resource - uri already exists in channel");
+				} else {
+					// SUCCESS
+					this.resources.put(command.resource, command.resource.owner);
+					response = buildSuccessResponse();
+				}
+			} catch (URISyntaxException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+				sendResponse(buildErrorResponse("invalid uri"), output);
+			}
+		}
+
+		sendResponse(response, output);
+	}
+
+	private void processQueryCommand(Command command, DataOutputStream output) {
+		logger.debug("QUERY command");
+		sendResponse(buildSuccessResponse(), output);
+
+		// TODO Find resources fitting to command
+
+		// TODO Send resources back to client
+		// TODO Send { "resultSize" : 2 }
+	}
+
+	private void processExchangeCommand(Command command, DataOutputStream output) {
+		logger.debug("EXCHANGE command");
 		// TODO Auto-generated method stub
 	}
 
-	private void processQuery(Command command) {
+	private void processFetchCommand(Command command, DataOutputStream output) {
+		logger.debug("FETCH command");
 		// TODO Auto-generated method stub
+	}
+
+	private void processShareCommand(Command command, DataOutputStream output) {
+		logger.debug("SHARE command");
+		// TODO Auto-generated method stub
+	}
+
+	private void processRemoveCommand(Command command, DataOutputStream output) {
+		logger.debug("REMOVE command");
+		// TODO Auto-generated method stub
+	}
+
+	private Response buildSuccessResponse() {
+		if (this.successResponse == null) {
+			this.successResponse = new Response();
+			this.successResponse = this.successResponse.success();
+		}
+		return this.successResponse;
+	}
+
+	private Response buildErrorResponse(String message) {
+		Response response = new Response();
+		response = response.error(message);
+		return response;
+	}
+
+	private void sendResponse(Response response, DataOutputStream output) {
+		try {
+			output.writeUTF(response.toJson());
+			output.flush();
+			logger.debug("SENT: " + response.toJson());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
 	}
 }

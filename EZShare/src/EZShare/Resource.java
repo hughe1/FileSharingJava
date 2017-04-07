@@ -15,7 +15,7 @@ import java.util.ArrayList;
 
 public class Resource extends JsonModel {
 	public String name;
-	private ArrayList<String> tags;
+	public ArrayList<String> tags;
 	public String description;
 	public String uri; // use URI class here
 	public String channel;
