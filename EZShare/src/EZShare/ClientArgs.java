@@ -11,23 +11,23 @@ public class ClientArgs extends ArgsManager {
 	 */
 	public ClientArgs(String[] args) {
 		// builds the client argument options
-		this.options.addOption("channel", true, "channel");
-		this.options.addOption("debug", false, "print debug information");
-		this.options.addOption("description", true, "resource description");
-		this.options.addOption("exchange", false, "exchange server list with server");
-		this.options.addOption("fetch", false, "fetch resources from server");
-		this.options.addOption("host", true, "server host, a domain name or IP address");
-		this.options.addOption("name", true, "resource name");
-		this.options.addOption("owner", true, "owner");
-		this.options.addOption("port", true, "server port, an integer");
-		this.options.addOption("publish", false, "publish resource on server");
-		this.options.addOption("query", false, "query for resources from server");
-		this.options.addOption("remove", false, "remove resource from server");
-		this.options.addOption("secret", true, "secret");
-		this.options.addOption("servers", true, "server list, host1:port1,host2:port2,...");
-		this.options.addOption("share", false, "share resource on server");
-		this.options.addOption("tags", true, "resource tags, tag1,tag2,tag3,...");
-		this.options.addOption("uri", true, "resource URI");
+		this.options.addOption(Constants.channelOption, true, "channel");
+		this.options.addOption(Constants.debugOption, false, "print debug information");
+		this.options.addOption(Constants.descriptionOption, true, "resource description");
+		this.options.addOption(Constants.exchangeOption, false, "exchange server list with server");
+		this.options.addOption(Constants.fetchOption, false, "fetch resources from server");
+		this.options.addOption(Constants.hostOption, true, "server host, a domain name or IP address");
+		this.options.addOption(Constants.nameOption, true, "resource name");
+		this.options.addOption(Constants.ownerOption, true, "owner");
+		this.options.addOption(Constants.portOption, true, "server port, an integer");
+		this.options.addOption(Constants.publishOption, false, "publish resource on server");
+		this.options.addOption(Constants.queryOption, false, "query for resources from server");
+		this.options.addOption(Constants.removeOption, false, "remove resource from server");
+		this.options.addOption(Constants.secretOption, true, "secret");
+		this.options.addOption(Constants.serversOption, true, "server list, host1:port1,host2:port2,...");
+		this.options.addOption(Constants.shareOption, false, "share resource on server");
+		this.options.addOption(Constants.tagsOption, true, "resource tags, tag1,tag2,tag3,...");
+		this.options.addOption(Constants.uriOption, true, "resource URI");
 		// attempts to parse the args otherwise print help menu and exit
 		try {
 			this.cmd = new DefaultParser().parse(options, args);
@@ -45,10 +45,10 @@ public class ClientArgs extends ArgsManager {
 	 * @return
 	 */
 	public Integer getSafePort() {
-		if (!this.hasOption("port")) {
+		if (!this.hasOption(Constants.portOption)) {
 			return 3780; // default port
 		}
-		return Integer.parseInt(this.getOptionValue("port"));
+		return Integer.parseInt(this.getOptionValue(Constants.portOption));
 	}
 
 	/**
@@ -56,10 +56,10 @@ public class ClientArgs extends ArgsManager {
 	 * @return
 	 */
 	public String getSafeHost() {
-		if (!this.hasOption("host")) {
+		if (!this.hasOption(Constants.hostOption)) {
 			return "localhost"; // default host
 		}
-		return this.getOptionValue("host");
+		return this.getOptionValue(Constants.hostOption);
 	}
 
 }

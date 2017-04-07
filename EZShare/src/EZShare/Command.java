@@ -27,17 +27,17 @@ public class Command extends JsonModel {
 	 * @param clientArgs
 	 */
 	public Command(ClientArgs clientArgs) {
-		if (clientArgs.hasOption("publish"))
+		if (clientArgs.hasOption(Constants.publishOption))
 			buildPublish(clientArgs);
-		else if (clientArgs.hasOption("share"))
+		else if (clientArgs.hasOption(Constants.shareOption))
 			buildShare(clientArgs);
-		else if (clientArgs.hasOption("query"))
+		else if (clientArgs.hasOption(Constants.queryOption))
 			buildQuery(clientArgs);
-		else if (clientArgs.hasOption("fetch"))
+		else if (clientArgs.hasOption(Constants.fetchOption))
 			buildFetch(clientArgs);
-		else if (clientArgs.hasOption("exchange"))
+		else if (clientArgs.hasOption(Constants.exchangeOption))
 			buildExchange(clientArgs);
-		else if (clientArgs.hasOption("remove"))
+		else if (clientArgs.hasOption(Constants.removeOption))
 			buildRemove(clientArgs);
 		else 
 			buildInvalid(clientArgs);
@@ -57,9 +57,10 @@ public class Command extends JsonModel {
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		// ensure that clientArgs contains a query, otherwise exit
-		if (!clientArgs.hasOption("query"))
+		if (!clientArgs.hasOption(Constants.queryOption))
 			clientArgs.printArgsHelp("");
-		this.command = "QUERY";
+		this.command = Constants.queryCommand;
+		this.relay = clientArgs.hasOption(Constants.relayOption) ?  java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(Constants.relayOption)): true;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -70,9 +71,9 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildPublish(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption("publish"))
+		if (!clientArgs.hasOption(Constants.publishOption))
 			clientArgs.printArgsHelp("");
-		this.command = "PUBLISH";
+		this.command = Constants.publishCommand;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
@@ -83,11 +84,11 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption("exchange"))
+		if(!clientArgs.hasOption(Constants.exchangeOption))
 			clientArgs.printArgsHelp("");
-		this.command = "EXCHANGE";
+		this.command = Constants.exchangeCommand;
 		try {
-			this.addServerList(clientArgs.getOptionValue("servers"));
+			this.addServerList(clientArgs.getOptionValue(Constants.serversOption));
 		} catch (NumberFormatException e) {
 			System.out.println(e.getClass().getName() + " " + e.getMessage());
 			System.exit(1);
@@ -101,9 +102,9 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption("fetch"))
+		if(!clientArgs.hasOption(Constants.fetchOption))
 			clientArgs.printArgsHelp("");
-		this.command = "FETCH";
+		this.command = Constants.fetchCommand;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -114,10 +115,10 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption("share"))
+		if(!clientArgs.hasOption(Constants.shareOption))
 			clientArgs.printArgsHelp("");
-		this.command = "SHARE";
-		this.secret = clientArgs.getOptionValue("secret");
+		this.command = Constants.shareCommand;
+		this.secret = clientArgs.getOptionValue(Constants.secretOption);
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
@@ -128,15 +129,15 @@ public class Command extends JsonModel {
 	 * @return
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption("remove"))
+		if(!clientArgs.hasOption(Constants.removeOption))
 			clientArgs.printArgsHelp("");
-		this.command = "REMOVE";
+		this.command = Constants.removeCommand;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
 	
 	public Command buildInvalid(ClientArgs clientArgs) {
-		this.command = "INVALID";
+		this.command = Constants.invalidCommand;
 		return this;
 	}
 	

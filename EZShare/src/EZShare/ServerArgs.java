@@ -9,11 +9,11 @@ public class ServerArgs extends ArgsManager {
 		/**
 		 * add all of the argument options for the server
 		 */
-		this.options.addOption("advertisedhostname", true, "advertised hostname");
-		this.options.addOption("connectionintervallimit", true, "connection interval limit in seconds");
-		this.options.addOption("port", true, "server port, an integer");
-		this.options.addOption("secret", true, "secret");
-		this.options.addOption("debug", false, "print debug information");
+		this.options.addOption(Constants.advertisedHostNameOption, true, "advertised hostname");
+		this.options.addOption(Constants.connectionIntervalLimitOption, true, "connection interval limit in seconds");
+		this.options.addOption(Constants.portOption, true, "server port, an integer");
+		this.options.addOption(Constants.secretOption, true, "secret");
+		this.options.addOption(Constants.debugOption, false, "print debug information");
 		/**
 		 * try and parse the options, otherwise print a help menu and exit
 		 */
@@ -37,10 +37,10 @@ public class ServerArgs extends ArgsManager {
 	 * @return
 	 */
 	public Integer getSafePort() {
-		if (!this.hasOption("port")) {
+		if (!this.hasOption(Constants.portOption)) {
 			return 3780; // default port
 		}
-		return Integer.parseInt(this.getOptionValue("port"));
+		return Integer.parseInt(this.getOptionValue(Constants.portOption));
 	}
 
 	/**
@@ -48,10 +48,10 @@ public class ServerArgs extends ArgsManager {
 	 * @return
 	 */
 	public String getSafeHost() {
-		if (!this.hasOption("host")) {
+		if (!this.hasOption(Constants.hostOption)) {
 			return "localhost"; // default host
 		}
-		return this.getOptionValue("host");
+		return this.getOptionValue(Constants.hostOption);
 	}
 
 }

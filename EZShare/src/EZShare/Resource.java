@@ -37,13 +37,13 @@ public class Resource extends JsonModel {
 	 * @param clientArgs
 	 */
 	public Resource(ClientArgs clientArgs) {
-		this.name = clientArgs.getOptionValue("name");
-		this.addTags(clientArgs.getOptionValue("tags"));
-		this.description = clientArgs.getOptionValue("description");
-		this.uri = clientArgs.getOptionValue("uri");
-		this.channel = clientArgs.getOptionValue("channel");
-		this.owner = clientArgs.getOptionValue("owner");
-		this.ezserver = clientArgs.getOptionValue("ezserver");
+		this.name = clientArgs.getOptionValue(Constants.nameOption);
+		this.addTags(clientArgs.getOptionValue(Constants.tagsOption));
+		this.description = clientArgs.getOptionValue(Constants.descriptionOption);
+		this.uri = clientArgs.getOptionValue(Constants.uriOption);
+		this.channel = clientArgs.getOptionValue(Constants.channelOption);
+		this.owner = clientArgs.getOptionValue(Constants.ownerOption);
+		this.ezserver = clientArgs.getOptionValue(Constants.ezserverOption);
 	}
 	
 	/**

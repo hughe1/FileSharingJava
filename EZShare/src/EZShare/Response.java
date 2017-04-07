@@ -16,7 +16,7 @@ public class Response extends JsonModel {
 	 * @return
 	 */
 	public Response success() {
-		this.response = "success";
+		this.response = Constants.success;
 		return this;
 	}
 	
@@ -36,7 +36,7 @@ public class Response extends JsonModel {
 	 * @return
 	 */
 	public Response error(String msg) {
-		this.response = "error";
+		this.response = Constants.error;
 		this.errorMessage = msg;
 		return this;
 	}

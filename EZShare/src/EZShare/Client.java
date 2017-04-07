@@ -29,7 +29,7 @@ public class Client {
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
-			String[] args2 = { "-query", "-channel", "myprivatechannel", "-debug" };
+			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.debugOption };
 			args = args2;
 		}
 
@@ -37,7 +37,7 @@ public class Client {
 		Client client = new Client(args);
 
 		// Configure logger
-		if (client.clientArgs.hasOption("debug")) {
+		if (client.clientArgs.hasOption(Constants.debugOption)) {
 			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
 			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
@@ -84,10 +84,10 @@ public class Client {
 			while (run) {
 				if (inFromServer.available() > 0) {
 					String fromServer = inFromServer.readUTF();
-					if (fromServer.contains("success") && command.command.equals("QUERY")
-							|| command.command.equals("FETCH"))
+					if (fromServer.contains(Constants.success) && command.command.equals(Constants.queryCommand)
+							|| command.command.equals(Constants.fetchCommand))
 						run = true;
-					if (fromServer.contains("resultSize"))
+					if (fromServer.contains("resultSize") || fromServer.contains(Constants.error))
 						run = false;
 					logger.debug("RECEIVED: " + fromServer);
 				}

@@ -26,13 +26,13 @@ public class Server {
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
-			String[] args2 = { "-debug" };
+			String[] args2 = { "-" + Constants.debugOption };
 			args = args2;
 		}
 
 		Server server = new Server(args);
 
-		if (server.serverArgs.hasOption("debug")) {
+		if (server.serverArgs.hasOption(Constants.debugOption)) {
 			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
 			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
