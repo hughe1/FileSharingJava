@@ -2,6 +2,7 @@ package EZShare;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -66,12 +67,17 @@ public class Server {
 	 * @return Command object encapsulating the arguments provided
 	 */
 	public Command parseCommand() {
-		if (serverArgs.cmd.hasOption("advertisedhostname")) {
+		if (serverArgs.cmd.hasOption(Constants.advertisedHostNameOption)) {
 			logger.debug("Advertised hostname command found");
-		} else if (serverArgs.cmd.hasOption("port")) {
+		}
+		if (serverArgs.cmd.hasOption(Constants.portOption)) {
 			logger.debug("Port command found");
 		}
+		if (serverArgs.cmd.hasOption(Constants.secretOption)) {
+			logger.debug("Secret command found");
+		}
 
+		logger.info("Using secret " + this.serverArgs.getSafeSecret());
 		logger.info("Using advertised hostname " + this.serverArgs.getSafeHost());
 		logger.info("Bound to port " + this.serverArgs.getSafePort());
 		return null;
@@ -174,14 +180,18 @@ public class Server {
 			String[] strings = { command.resource.name, command.resource.description, command.resource.uri,
 					command.resource.channel, command.resource.owner, command.resource.ezserver };
 			stringValues.addAll(Arrays.asList(strings));
-			stringValues.addAll(command.resource.tags);
+			if (command.resource.tags != null) {
+				stringValues.addAll(command.resource.tags);
+			}
 		}
 		if (command.resourceTemplate != null) {
 			String[] strings = { command.resourceTemplate.name, command.resourceTemplate.description,
 					command.resourceTemplate.uri, command.resourceTemplate.channel, command.resourceTemplate.owner,
 					command.resourceTemplate.ezserver };
 			stringValues.addAll(Arrays.asList(strings));
-			stringValues.addAll(command.resourceTemplate.tags);
+			if (command.resourceTemplate.tags != null) {
+				stringValues.addAll(command.resourceTemplate.tags);
+			}
 		}
 
 		for (String value : stringValues) {
@@ -214,14 +224,15 @@ public class Server {
 	}
 
 	private void processPublishCommand(Command command, DataOutputStream output) {
-		logger.debug("PUBLISH command");
+		logger.debug("Processing PUBLISH command");
 
 		Response response = buildErrorResponse("cannot publish resource");
 
 		// Check for invalid resource fields
 		if (command.resource == null) {
 			response = buildErrorResponse("missing resource");
-		} else if (command.resource.uri == null || command.resource.uri.equals("")) {
+		} else if (command.resource.uri == null || command.resource.uri.length() == 0
+				|| command.resource.uri.equals("")) {
 			// "The URI must be present, ..."
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else {
@@ -246,7 +257,7 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid uri"), output);
+				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
 			}
 		}
 
@@ -254,8 +265,9 @@ public class Server {
 	}
 
 	private void processQueryCommand(Command command, DataOutputStream output) {
-		logger.debug("QUERY command");
-		sendResponse(buildSuccessResponse(), output);
+		logger.debug("Processing QUERY command");
+
+		// sendResponse(buildSuccessResponse(), output);
 
 		// TODO Find resources fitting to command
 
@@ -264,23 +276,94 @@ public class Server {
 	}
 
 	private void processExchangeCommand(Command command, DataOutputStream output) {
-		logger.debug("EXCHANGE command");
+		logger.debug("Processing EXCHANGE command");
 		// TODO Auto-generated method stub
 	}
 
 	private void processFetchCommand(Command command, DataOutputStream output) {
-		logger.debug("FETCH command");
+		logger.debug("Processing FETCH command");
 		// TODO Auto-generated method stub
 	}
 
 	private void processShareCommand(Command command, DataOutputStream output) {
-		logger.debug("SHARE command");
-		// TODO Auto-generated method stub
+		logger.debug("Processing SHARE command");
+
+		Response response = buildErrorResponse("cannot share resource");
+
+		// Check for invalid resource fields
+		if (command.secret == null || command.secret.equals("") || command.secret.length() == 0) {
+			// "The server secret must be present ..."
+			response = buildErrorResponse("missing resource and/or secret");
+		} else if (!command.secret.equals(this.serverArgs.getSafeSecret())) {
+			// "... and must equal the value known to the server."
+			response = buildErrorResponse("incorrect secret");
+		} else if (command.resource == null) {
+			response = buildErrorResponse("missing resource and/or secret");
+		} else if (command.resource.uri == null || command.resource.uri.length() == 0
+				|| command.resource.uri.equals("")) {
+			// "The URI must be present, ..."
+			response = buildErrorResponse("invalid resource - missing uri");
+		} else {
+			try {
+				URI uri = new URI(command.resource.uri);
+
+				if (!uri.isAbsolute()) {
+					// "..., must be absolute ..."
+					response = buildErrorResponse("invalid resource - uri must be absolute");
+				} else if (uri.getAuthority() != null) {
+					// "..., non-authoritative ...."
+					response = buildErrorResponse("invalid resource - uri must be non-authoritative");
+				} else if (!uri.getScheme().equals("file")) {
+					// "... and must be a file scheme."
+					response = buildErrorResponse("invalid resource - uri must be a file scheme");
+				} else if (this.resources.containsKey(command.resource)
+						&& !this.resources.get(command.resource).equals(command.resource.owner)) {
+					// "Sharing a resource with the same channel and URI but
+					// different owner is not allowed."
+					response = buildErrorResponse("cannot share resource - uri already exists in channel");
+				} else {
+					File f = new File(uri);
+					if (!f.exists()) {
+						// "[The URI] must point to a file on the local file
+						// system that the server can read as a file."
+						response = buildErrorResponse(
+								"invalid resource - uri does not point to a file on the local file system");
+					} else {
+						// SUCCESS
+						this.resources.put(command.resource, command.resource.owner);
+						response = buildSuccessResponse();
+					}
+				}
+			} catch (URISyntaxException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+			}
+		}
+
+		sendResponse(response, output);
 	}
 
 	private void processRemoveCommand(Command command, DataOutputStream output) {
-		logger.debug("REMOVE command");
-		// TODO Auto-generated method stub
+		logger.debug("Processing REMOVE command");
+
+		Response response = buildErrorResponse("cannot remove resource");
+
+		// Check for invalid resource fields
+		if (command.resource == null) {
+			response = buildErrorResponse("missing resource");
+		} else if (command.resource.uri == null || command.resource.uri.equals("")) {
+			// URI must be present
+			response = buildErrorResponse("invalid resource - missing uri");
+		} else if (!this.resources.containsKey(command.resource)) {
+			// Resource must exist
+			response = buildErrorResponse("cannot remove resource - resource does not exist");
+		} else {
+			// SUCCESS
+			this.resources.remove(command.resource);
+			response = buildSuccessResponse();
+		}
+
+		sendResponse(response, output);
 	}
 
 	private Response buildSuccessResponse() {

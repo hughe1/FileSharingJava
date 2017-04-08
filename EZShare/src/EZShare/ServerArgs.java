@@ -53,5 +53,15 @@ public class ServerArgs extends ArgsManager {
 		}
 		return this.getOptionValue(Constants.hostOption);
 	}
-
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public String getSafeSecret() {
+		if (!this.hasOption(Constants.secretOption)) {
+			return "1234"; // TODO calculate(?)/randomly generate secret
+		}
+		return this.getOptionValue(Constants.secretOption);
+	}
 }
