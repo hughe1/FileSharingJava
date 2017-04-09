@@ -21,7 +21,7 @@ public class Resource extends JsonModel {
 	public String channel;
 	public String owner;
 	public String ezserver;
-	public Integer resourceSize;
+	public Long resourceSize;
 
 	/**
 	 * Default constructor

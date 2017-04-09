@@ -29,10 +29,17 @@ public class Client {
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
-			// QUERY
-			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "mydamnchannel",
-					"-" + Constants.descriptionOption, "jar", "-" + Constants.uriOption, "http://www.unimelb.edu.au",
-					"-" + Constants.debugOption };
+			// SHARE
+//			 String[] args2 = { "-" + Constants.shareOption, "-" +
+//			 Constants.uriOption,
+//			 "file:///Users/alexandrafritzen/ezshare.jar", "-" +
+//			 Constants.nameOption, "EZShare JAR",
+//			 "-" + Constants.descriptionOption, "The jar file for EZShare.",
+//			 "-" + Constants.tagsOption, "jar", "-" + Constants.channelOption,
+//			 "myprivatechannel",
+//			 "-" + Constants.ownerOption, "aaron010", "-" +
+//			 Constants.secretOption, "1234",
+//			 "-" + Constants.debugOption };
 
 			// PUBLISH
 			// String[] args2 = { "-" + Constants.publishOption, "-" +
@@ -49,19 +56,14 @@ public class Client {
 			// String[] args2 = { "-" + Constants.removeOption, "-" +
 			// Constants.uriOption, "http://www.unimelb.edu.au", "-" +
 			// Constants.debugOption };
+			
+			// QUERY
+//			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "myprivatechannel",
+//					"-" + Constants.descriptionOption, "jar",
+//					"-" + Constants.debugOption };
 
-			// SHARE
-			// String[] args2 = { "-" + Constants.shareOption, "-" +
-			// Constants.uriOption,
-			// "file:///Users/alexandrafritzen/ezshare.jar", "-" +
-			// Constants.nameOption, "EZShare JAR",
-			// "-" + Constants.descriptionOption, "The jar file for EZShare. Use
-			// with caution.",
-			// "-" + Constants.tagsOption, "jar", "-" + Constants.channelOption,
-			// "myprivatechannel",
-			// "-" + Constants.ownerOption, "aaron010", "-" +
-			// Constants.secretOption, "1234",
-			// "-" + Constants.debugOption };
+			// FETCH
+			String[] args2 = { "-" + Constants.fetchOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.uriOption, "file:///Users/alexandrafritzen/ezshare.jar"};
 
 			args = args2;
 		}

@@ -273,6 +273,7 @@ public class Server {
 
 			sendResponse(buildSuccessResponse(), output);
 
+			// TODO Don't iterate over whole map!!
 			int count = 0;
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
@@ -341,6 +342,59 @@ public class Server {
 	private void processFetchCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing FETCH command");
 		// TODO Auto-generated method stub
+		
+
+		// Check for invalid resourceTemplate fields
+		if (command.resourceTemplate == null) {
+			sendResponse(buildErrorResponse("missing resourceTemplate"),output);
+		} else if (command.resourceTemplate.uri == null || command.resourceTemplate.uri.length() == 0
+				|| command.resourceTemplate.uri.equals(Constants.emptyString)) {
+			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
+		} else if (command.resourceTemplate.channel == null || command.resourceTemplate.channel.length() == 0
+				|| command.resourceTemplate.channel.equals(Constants.emptyString)) {
+			sendResponse(buildErrorResponse("invalid resourceTemplate - missing channel"), output);
+		} else if (!this.resources.containsKey(command.resourceTemplate)) {
+			sendResponse(buildErrorResponse("resource doesn't exist"), output);
+		} else {
+			// TODO Don't iterate over Map, do something else!!
+			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
+				Resource resource = entry.getKey();
+				String owner = entry.getValue();
+				if (resource.channel.equals(command.resourceTemplate.channel) && resource.uri.equals(command.resourceTemplate.uri)) {
+					sendResponse(buildSuccessResponse(), output);
+										
+					try {
+						URI uri = new URI(resource.uri);
+						File file = new File(uri);
+				        long length = file.length();
+
+						resource.resourceSize = length;
+												
+						// "The server will never reveal the owner of a resource in
+						// a response. If a resource has an owner then it will be
+						// replaced with the "*" character."
+						resource.owner = "*";
+
+						sendString(resource.toJson(), output);
+
+						// Reset owner
+						resource.owner = owner;
+						
+						// TODO convert file into bytes
+						// TODO write bytes to output
+						
+						Response response = new Response();
+						response.resultSize = 1;
+						sendResponse(response, output);
+						break;
+
+					} catch (URISyntaxException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+						sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+					} 
+				}
+			}
+		}		
 	}
 
 	private void processShareCommand(Command command, DataOutputStream output) {
