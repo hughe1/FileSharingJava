@@ -36,4 +36,6 @@ public class Constants {
 
 	public static final String success = "success";
 	public static final String error = "error";
+	
+	public static final String emptyString = "";
 }

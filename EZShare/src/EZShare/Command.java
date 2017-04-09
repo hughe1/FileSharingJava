@@ -15,9 +15,7 @@ public class Command extends JsonModel {
 	 * default constructor
 	 */
 	public Command() {
-
 	}
-
 
 	/**
 	 * Builds a command based on the clientArgs. Warning it doesn't check for
@@ -39,7 +37,7 @@ public class Command extends JsonModel {
 			buildExchange(clientArgs);
 		else if (clientArgs.hasOption(Constants.removeOption))
 			buildRemove(clientArgs);
-		else 
+		else
 			buildInvalid(clientArgs);
 	}
 
@@ -52,7 +50,8 @@ public class Command extends JsonModel {
 	 * Builds a query Command given a ClientArgs object. Use case: Command
 	 * command = new Command().buildQuery(...);
 	 * 
-	 * @param cmd contains input from the user.
+	 * @param cmd
+	 *            contains input from the user.
 	 * @return new ClientArgs object modeling the user input.
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
@@ -60,7 +59,8 @@ public class Command extends JsonModel {
 		if (!clientArgs.hasOption(Constants.queryOption))
 			clientArgs.printArgsHelp("");
 		this.command = Constants.queryCommand;
-		this.relay = clientArgs.hasOption(Constants.relayOption) ?  java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(Constants.relayOption)): true;
+		this.relay = clientArgs.hasOption(Constants.relayOption)
+				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(Constants.relayOption)) : true;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -84,7 +84,7 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption(Constants.exchangeOption))
+		if (!clientArgs.hasOption(Constants.exchangeOption))
 			clientArgs.printArgsHelp("");
 		this.command = Constants.exchangeCommand;
 		try {
@@ -102,7 +102,7 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption(Constants.fetchOption))
+		if (!clientArgs.hasOption(Constants.fetchOption))
 			clientArgs.printArgsHelp("");
 		this.command = Constants.fetchCommand;
 		this.resourceTemplate = new Resource(clientArgs);
@@ -115,7 +115,7 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption(Constants.shareOption))
+		if (!clientArgs.hasOption(Constants.shareOption))
 			clientArgs.printArgsHelp("");
 		this.command = Constants.shareCommand;
 		this.secret = clientArgs.getOptionValue(Constants.secretOption);
@@ -129,26 +129,28 @@ public class Command extends JsonModel {
 	 * @return
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
-		if(!clientArgs.hasOption(Constants.removeOption))
+		if (!clientArgs.hasOption(Constants.removeOption))
 			clientArgs.printArgsHelp("");
 		this.command = Constants.removeCommand;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
-	
+
 	public Command buildInvalid(ClientArgs clientArgs) {
 		this.command = Constants.invalidCommand;
 		return this;
 	}
-	
+
 	/**
-	 * Convenient method to parse and add details about a server. Usual
-	 * use case is for building a SHARE command.
+	 * Convenient method to parse and add details about a server. Usual use case
+	 * is for building a SHARE command.
 	 * 
-	 * @param str has form host:port,host:port,...
+	 * @param str
+	 *            has form host:port,host:port,...
 	 */
 	public void addServerList(String str) throws NumberFormatException {
-		if(str == null) return;
+		if (str == null)
+			return;
 		this.serverList = new ArrayList<ServerInfo>();
 		String[] addresses = str.split(",");
 		for (String token : addresses) {
@@ -159,7 +161,7 @@ public class Command extends JsonModel {
 			// get the port in position 1
 			int port = Integer.parseInt(hostPortToken[1]);
 			// add a new ServerInfo object into the list
-			this.serverList.add(new ServerInfo(host,port));
+			this.serverList.add(new ServerInfo(host, port));
 		}
 	}
 }

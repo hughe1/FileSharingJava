@@ -3,8 +3,8 @@ package EZShare;
 import java.util.ArrayList;
 
 /**
- * The class models the Resource json object as specified in the assignment.
- * the class implements hashCode and equals so that objects can be easily
+ * The class models the Resource json object as specified in the assignment. the
+ * class implements hashCode and equals so that objects can be easily
  * hashed/compared when comparing against other Resource objects. Here the tuple
  * (channel,uri) is used as a PrimaryKey to identify the object.
  * 
@@ -22,30 +22,42 @@ public class Resource extends JsonModel {
 	public String owner;
 	public String ezserver;
 	public Integer resourceSize;
-	
+
 	/**
 	 * Default constructor
 	 */
 	public Resource() {
-		
+
 	}
-	
+
 	/**
-	 * Convenient constructor for Client that will make a resource based on
-	 * the user inputs.
+	 * Convenient constructor for Client that will make a resource based on the
+	 * user inputs.
 	 * 
 	 * @param clientArgs
 	 */
 	public Resource(ClientArgs clientArgs) {
-		this.name = clientArgs.getOptionValue(Constants.nameOption);
+		String name = clientArgs.getOptionValue(Constants.nameOption);		
+		this.name = name == null ? Constants.emptyString : name;
+
 		this.addTags(clientArgs.getOptionValue(Constants.tagsOption));
-		this.description = clientArgs.getOptionValue(Constants.descriptionOption);
-		this.uri = clientArgs.getOptionValue(Constants.uriOption);
-		this.channel = clientArgs.getOptionValue(Constants.channelOption);
-		this.owner = clientArgs.getOptionValue(Constants.ownerOption);
-		this.ezserver = clientArgs.getOptionValue(Constants.ezserverOption);
+		
+		String description = clientArgs.getOptionValue(Constants.descriptionOption);		
+		this.description = description == null ? Constants.emptyString : description;
+		
+		String uri = clientArgs.getOptionValue(Constants.uriOption);		
+		this.uri = uri == null ? Constants.emptyString : uri;
+		
+		String channel = clientArgs.getOptionValue(Constants.channelOption);		
+		this.channel = channel == null ? Constants.emptyString : channel;
+		
+		String owner = clientArgs.getOptionValue(Constants.ownerOption);		
+		this.owner = owner == null ? Constants.emptyString : owner;
+		
+		String ezserver = clientArgs.getOptionValue(Constants.ezserverOption);		
+		this.ezserver = ezserver == null ? Constants.emptyString : ezserver;
 	}
-	
+
 	/**
 	 * 
 	 */
@@ -54,8 +66,9 @@ public class Resource extends JsonModel {
 		return g.fromJson(json, Resource.class);
 	}
 
-	
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
@@ -67,7 +80,9 @@ public class Resource extends JsonModel {
 		return result;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
@@ -96,26 +111,30 @@ public class Resource extends JsonModel {
 	 * This method spits tags with delimiter "," and loops through each
 	 * resulting token and adds it to the tags list if tokens exist.
 	 * 
-	 * @param tags has form tag1,tag2,tag3,...
+	 * @param tags
+	 *            has form tag1,tag2,tag3,...
 	 */
 	public void addTags(String tags) {
-		if(tags == null) return;
-		String[] tokens = tags.split(",");
 		this.tags = new ArrayList<String>();
+		if (tags == null)
+			return;
+		String[] tokens = tags.split(",");
 		for (String token : tokens) {
 			this.tags.add(token);
 		}
 	}
-	
+
 	/**
-	 * Convenience method for Server. Can call this to easily compare 
-	 * incoming resource objects from client.
+	 * Convenience method for Server. Can call this to easily compare incoming
+	 * resource objects from client.
 	 * 
 	 * @return "" if owner is null, otherwise return the owner
 	 */
 	public String getSafeOwner() {
-		if (this.owner==null) return "";
-		else return this.owner;
+		if (this.owner == null)
+			return Constants.emptyString;
+		else
+			return this.owner;
 	}
 
 }

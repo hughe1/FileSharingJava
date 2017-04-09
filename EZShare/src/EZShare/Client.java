@@ -30,9 +30,9 @@ public class Client {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
 			// QUERY
-			// String[] args2 = { "-" + Constants.queryOption, "-" +
-			// Constants.channelOption, "myprivatechannel",
-			// "-" + Constants.debugOption };
+			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "mydamnchannel",
+					"-" + Constants.descriptionOption, "jar", "-" + Constants.uriOption, "http://www.unimelb.edu.au",
+					"-" + Constants.debugOption };
 
 			// PUBLISH
 			// String[] args2 = { "-" + Constants.publishOption, "-" +
@@ -41,20 +41,27 @@ public class Client {
 			// University of Melbourne",
 			// "-" + Constants.uriOption, "http://www.unimelb.edu.au", "-" +
 			// Constants.tagsOption, "web,html",
-			// "-" + Constants.ownerOption, "Alex", "-" + Constants.debugOption, "-" + Constants.debugOption 
+			// "-" + Constants.ownerOption, "Alex", "-" + Constants.debugOption,
+			// "-" + Constants.debugOption
 			// };
 
 			// REMOVE
 			// String[] args2 = { "-" + Constants.removeOption, "-" +
-			// Constants.uriOption, "http://www.unimelb.edu.au", "-" + Constants.debugOption  };
+			// Constants.uriOption, "http://www.unimelb.edu.au", "-" +
+			// Constants.debugOption };
 
 			// SHARE
-			String[] args2 = { "-" + Constants.shareOption, "-" + Constants.uriOption,
-					"file:///Users/alexandrafritzen/ezshare.jar", "-" + Constants.nameOption, "EZShare JAR",
-					"-" + Constants.descriptionOption, "The jar file for EZShare. Use with caution.",
-					"-" + Constants.tagsOption, "jar", "-" + Constants.channelOption, "myprivatechannel",
-					"-" + Constants.ownerOption, "aaron010", "-" + Constants.secretOption, "1234",
-					"-" + Constants.debugOption };
+			// String[] args2 = { "-" + Constants.shareOption, "-" +
+			// Constants.uriOption,
+			// "file:///Users/alexandrafritzen/ezshare.jar", "-" +
+			// Constants.nameOption, "EZShare JAR",
+			// "-" + Constants.descriptionOption, "The jar file for EZShare. Use
+			// with caution.",
+			// "-" + Constants.tagsOption, "jar", "-" + Constants.channelOption,
+			// "myprivatechannel",
+			// "-" + Constants.ownerOption, "aaron010", "-" +
+			// Constants.secretOption, "1234",
+			// "-" + Constants.debugOption };
 
 			args = args2;
 		}

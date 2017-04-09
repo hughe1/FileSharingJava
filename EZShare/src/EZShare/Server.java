@@ -11,10 +11,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
 import javax.net.ServerSocketFactory;
 
@@ -232,7 +229,7 @@ public class Server {
 		if (command.resource == null) {
 			response = buildErrorResponse("missing resource");
 		} else if (command.resource.uri == null || command.resource.uri.length() == 0
-				|| command.resource.uri.equals("")) {
+				|| command.resource.uri.equals(Constants.emptyString)) {
 			// "The URI must be present, ..."
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else {
@@ -252,6 +249,7 @@ public class Server {
 					response = buildErrorResponse("cannot publish resource - uri already exists in channel");
 				} else {
 					// SUCCESS
+					command.resource.ezserver = this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort();
 					this.resources.put(command.resource, command.resource.owner);
 					response = buildSuccessResponse();
 				}
@@ -266,13 +264,73 @@ public class Server {
 
 	private void processQueryCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing QUERY command");
+		
+		// TODO Implement query relay (how???)
 
-		// sendResponse(buildSuccessResponse(), output);
+		if (command.resourceTemplate == null) {
+			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
+		} else {
 
-		// TODO Find resources fitting to command
+			sendResponse(buildSuccessResponse(), output);
 
-		// TODO Send resources back to client
-		// TODO Send { "resultSize" : 2 }
+			int count = 0;
+			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
+				Resource resource = entry.getKey();
+				String owner = entry.getValue();
+
+				// Query rules:
+				// "(The template channel equals (case sensitive) the resource
+				// channel AND
+				boolean equalChannel = resource.channel.equals(command.resourceTemplate.channel);
+
+				// If the template contains an owner that is not "", then the
+				// candidate owner must equal it (case sensitive) AND
+				boolean equalOrNoOwner = command.resourceTemplate.owner.equals(Constants.emptyString) ? true
+						: resource.owner.equals(command.resourceTemplate.owner);
+
+				// Any tags present in the template also are present in the
+				// candidate (case insensitive) AND
+				boolean equalTags = command.resourceTemplate.tags.size() == 0 ? true
+						: resource.tags.containsAll(command.resourceTemplate.tags);
+
+				// If the template contains a URI then the candidate URI matches
+				// (case sensitive) AND
+				boolean equalOrNoUri = command.resourceTemplate.uri.equals(Constants.emptyString) ? true
+						: resource.uri.equals(command.resourceTemplate.uri);
+
+				// (The candidate name contains the template name as a substring
+				// (for non "" template name) OR
+				boolean nameIsSubstring = command.resourceTemplate.name.equals(Constants.emptyString) ? true
+						: resource.name.equals(command.resourceTemplate.name);
+
+				// The candidate description contains the template description
+				// as a substring (for non "" template descriptions) OR
+				boolean descriptionIsSubstring = command.resourceTemplate.description.equals(Constants.emptyString)
+						? true : resource.description.equals(command.resourceTemplate.description);
+
+				// The template description and name are both ""))"
+				boolean noDescriptionAndName = command.resourceTemplate.name.equals(Constants.emptyString)
+						&& command.resourceTemplate.description.equals(Constants.emptyString);
+
+				if (equalChannel && equalOrNoOwner && equalTags && equalOrNoUri
+						&& (nameIsSubstring || descriptionIsSubstring || noDescriptionAndName)) {
+					count++;
+
+					// "The server will never reveal the owner of a resource in
+					// a response. If a resource has an owner then it will be
+					// replaced with the "*" character."
+					resource.owner = "*";
+
+					sendString(resource.toJson(), output);
+
+					// Reset owner
+					resource.owner = owner;
+				}
+			}
+			Response response = new Response();
+			response.resultSize = count;
+			sendResponse(response, output);
+		}
 	}
 
 	private void processExchangeCommand(Command command, DataOutputStream output) {
@@ -291,7 +349,7 @@ public class Server {
 		Response response = buildErrorResponse("cannot share resource");
 
 		// Check for invalid resource fields
-		if (command.secret == null || command.secret.equals("") || command.secret.length() == 0) {
+		if (command.secret == null || command.secret.equals(Constants.emptyString) || command.secret.length() == 0) {
 			// "The server secret must be present ..."
 			response = buildErrorResponse("missing resource and/or secret");
 		} else if (!command.secret.equals(this.serverArgs.getSafeSecret())) {
@@ -300,7 +358,7 @@ public class Server {
 		} else if (command.resource == null) {
 			response = buildErrorResponse("missing resource and/or secret");
 		} else if (command.resource.uri == null || command.resource.uri.length() == 0
-				|| command.resource.uri.equals("")) {
+				|| command.resource.uri.equals(Constants.emptyString)) {
 			// "The URI must be present, ..."
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else {
@@ -330,6 +388,7 @@ public class Server {
 								"invalid resource - uri does not point to a file on the local file system");
 					} else {
 						// SUCCESS
+						command.resource.ezserver = this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort();
 						this.resources.put(command.resource, command.resource.owner);
 						response = buildSuccessResponse();
 					}
@@ -351,7 +410,7 @@ public class Server {
 		// Check for invalid resource fields
 		if (command.resource == null) {
 			response = buildErrorResponse("missing resource");
-		} else if (command.resource.uri == null || command.resource.uri.equals("")) {
+		} else if (command.resource.uri == null || command.resource.uri.equals(Constants.emptyString)) {
 			// URI must be present
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else if (!this.resources.containsKey(command.resource)) {
@@ -381,10 +440,14 @@ public class Server {
 	}
 
 	private void sendResponse(Response response, DataOutputStream output) {
+		sendString(response.toJson(), output);
+	}
+
+	private void sendString(String string, DataOutputStream output) {
 		try {
-			output.writeUTF(response.toJson());
+			output.writeUTF(string);
 			output.flush();
-			logger.debug("SENT: " + response.toJson());
+			logger.debug("SENT: " + string);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
