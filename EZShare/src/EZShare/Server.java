@@ -1,9 +1,12 @@
 package EZShare;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -43,9 +46,9 @@ public class Server {
 		Server server = new Server(args);
 
 		if (server.serverArgs.hasOption(Constants.debugOption)) {
-			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
+			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
-			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
+			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
 		}
 		logger = LogManager.getRootLogger();
 		logger.debug("Debugger enabled");
@@ -112,13 +115,14 @@ public class Server {
 				// client
 				// i.e., implement a runnable class
 				// lambda expression
-				Thread t = new Thread(() -> serveClient(client));
+				Thread t = new Thread(() -> this.serveClient(client));
 				t.start();
 			}
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
+			e.printStackTrace();
 		}
 
 	}
@@ -621,7 +625,7 @@ public class Server {
 		public ExchangeJob() {
 			super();
 		}
-		
+
 		public ExchangeJob(ServerInfo source) {
 			super();
 			this.source = source;
@@ -689,10 +693,27 @@ public class Server {
 				logger.info("No server in server list");
 			}
 		}
+	}
 
-		private void removeServer(ServerInfo serverInfo) {
-			logger.debug("Removing server due to not being reachable or a communication error having occurred");
-			servers.remove(serverInfo);
-		}
+	private void removeServer(ServerInfo serverInfo) {
+		logger.debug("Removing server due to not being reachable or a communication error having occurred");
+		servers.remove(serverInfo);
+	}
+
+	public void sendFile(File file, Socket socket) throws IOException {
+		// define an array as the length of the file
+		byte[] bytes = new byte[(int) file.length()];
+		FileInputStream fis = new FileInputStream(file);
+		BufferedInputStream bis = new BufferedInputStream(fis);
+		// read the file into the bytes array
+		bis.read(bytes);
+		// define an output stream
+		OutputStream os = socket.getOutputStream();
+		// write the bytes array onto the stream
+		os.write(bytes);
+		os.flush();
+		// close bis and os - no longer needed
+		bis.close();
+		os.close();
 	}
 }

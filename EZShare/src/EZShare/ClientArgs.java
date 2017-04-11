@@ -28,6 +28,7 @@ public class ClientArgs extends ArgsManager {
 		this.options.addOption(Constants.shareOption, false, "share resource on server");
 		this.options.addOption(Constants.tagsOption, true, "resource tags, tag1,tag2,tag3,...");
 		this.options.addOption(Constants.uriOption, true, "resource URI");
+		this.options.addOption(Constants.relayOption, true, "relay Query");
 		// attempts to parse the args otherwise print help menu and exit
 		try {
 			this.cmd = new DefaultParser().parse(options, args);
