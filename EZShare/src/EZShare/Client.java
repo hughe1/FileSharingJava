@@ -109,7 +109,7 @@ public class Client {
 
 		
 		try {
-			logger.info("Creating socket at port "+serverInfo.getPort());
+			logger.info("Connecting to host "+serverInfo.getHostname()+" at port "+serverInfo.getPort());
 			//Socket socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 			socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 			socket.setSoTimeout(TIME_OUT_LIMIT); // wait for 5 seconds
@@ -119,7 +119,7 @@ public class Client {
 			outToServer.writeUTF(command.toJson());
 			logger.info("Sending "+command.command+" command... ");
 			outToServer.flush();
-			logger.info(command.command+" command sent");
+			logger.info(command.command+" command sent. Waiting for response.. ");
 
 			
 			// Doesn't work with the logger due to multiple lines being
@@ -202,7 +202,6 @@ public class Client {
 	 * 
 	 */
 	public void processServerResponse(Command command, ArrayList<Response> responses, DataInputStream input) {
-		logger.info("processing: "+responses);
 		try 
 		{	
 
@@ -210,17 +209,18 @@ public class Client {
 			int number_responses = responses.size();
 			int number_correct_responses = 0;
 			for (int i = 0;i<number_responses;i++) {
-				if (parseResponseForErrors(responses.get(i), input)) {
+				if (!parseResponseForErrors(responses.get(i), input)) {
 					 number_correct_responses +=1;
 				}
 			}
 			
-			logger.info(number_correct_responses+" with correct json syntax out of "+number_responses+" total responses");
+			logger.info("Server response received ("+number_correct_responses+" out of "+number_responses+" responses well-formed)");
+			
 			if (number_correct_responses != number_responses) {
-				logger.error("Error parsing response from server");
+				logger.error("Incorretly formed server response");
 			}
 			else {
-
+				try {
 				switch (command.command) {
 					case Constants.queryCommand:
 						processQueryResponse(responses, input);
@@ -250,6 +250,10 @@ public class Client {
 						processMissingOrInvalidResponse(responses, input);
 						break;
 				}
+				}
+				catch (Exception e) {
+					logger.error("Error processing response");
+				}
 			}
 			
 		}
@@ -261,33 +265,36 @@ public class Client {
 }
 
 	private static void processMissingOrInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
+		logger.error("Incorretly formed server response");
 		
 	}
 
 	private static void processInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
+		logger.error("Incorretly formed server response");
 		
 	}
 
 	private static void processRemoveResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
+		genericResponse(responses, "Remove");
 		
 	}
 
 	private static void processShareResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
+		genericResponse(responses, "Share");
 		
 	}
 
 	private static void processPublishResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
-		
+		genericResponse(responses, "Publish");
 	}
-
-	private static void processExchangeResponse(ArrayList<Response> responses,DataInputStream input) {
-		// TODO Auto-generated method stub
-		
+	
+	private static void genericResponse(ArrayList<Response> responses, String commandName) {
+		if (responses.get(0).response.equals("success")) {
+			logger.info(commandName+" successful");
+		}
+		else {
+			logger.info(commandName+" unsuccessful: "+responses.get(0).errorMessage);
+		}
 	}
 
 	private static void processFetchResponse(ArrayList<Response> responses, DataInputStream input) {
