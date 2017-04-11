@@ -9,7 +9,6 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -123,146 +122,66 @@ public class Client {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
 	
-	public void onSuccess(Command command, DataInputStream inFromServer) {
-		// TODO: process all types of queries here
+	/**
+	 * 
+	 * @param command
+	 * @param inFromServer
+	 * @throws IOException 
+	 * @throws SocketTimeoutException 
+	 */
+	public void onSuccess(Command command, DataInputStream inFromServer) throws 
+		SocketTimeoutException, IOException {
 		// publish, remove, share, exchange -> only print the response
 		// query, fetch -> have to deal with these dynamically
 		switch (command.command) {
 		case Constants.queryCommand:
-			// TODO: deal with a query here
-			System.out.println("in development");
+			this.processQuery(inFromServer);
 			break;
 		case Constants.fetchCommand:
-			// TODO: deal with fetch here
-			System.out.println("in development");
+			this.processFetch(inFromServer);
 			break;
 		default:
 			// logger.info(command.toJson());
 			// not much to do here
 			break;
 		}
-	}
-
+	}	
+	
 	/**
+	 * Responsible for processing a query command. By the time this method is
+	 * called, the client has already called readUTF once. This method should
+	 * process anything after the initial JSON object from the server.
 	 * 
+	 * @param inFromServer
 	 */
-	public void processServerResponse(Command command, ArrayList<String> responses, DataInputStream input) {
-		try 
-		{			
-			int number_responses = responses.size();
-			int number_correct_responses = 0;
-			for (int i = 0;i<number_responses;i++) {
-				Response response = (new Response()).fromJson(responses.get(i));
-				if (!parseResponseForErrors(response, input)) {
-					 number_correct_responses +=1;
-				}
-			}
-			
-			logger.info("Server response received ("+number_correct_responses+" out of "+number_responses+" responses well-formed)");
-			
-			if (number_correct_responses != number_responses) {
-				logger.error("Incorretly formed server response");
+	private void processFetch(DataInputStream inFromServer) {
+		// TODO Auto-generated method stub
+
+	}
+	
+	/**
+	 * Responsible for processing a query command. By the time this method is
+	 * called, the client has already called readUTF once. This method should
+	 * process anything after the initial JSON object from the server.
+	 * 
+	 * @param inFromServer
+	 * @throws SocketTimeoutException, IOException 
+	 */
+	private void processQuery(DataInputStream inFromServer) throws 
+		SocketTimeoutException, IOException {
+		// TODO Auto-generated method stub
+		boolean run = true;
+		while(run) {
+			String fromServer = inFromServer.readUTF();
+			if(fromServer.contains("resultSize")) {
+				run = false;
+				logger.info(new Response().fromJson(fromServer).toJson());
 			}
 			else {
-				try {
-				switch (command.command) {
-					case Constants.queryCommand:
-						processQueryResponse(responses, input);
-						break;
-					case Constants.fetchCommand:
-						processFetchResponse(responses, input);
-						break;
-					case Constants.publishCommand:
-						processPublishResponse(responses, input);
-						break;
-					case Constants.shareCommand:
-						processShareResponse(responses, input);
-						break;
-					case Constants.removeCommand:
-						processRemoveResponse(responses, input);
-						break;
-					case Constants.invalidCommand:
-						processInvalidResponse(responses, input);
-						break;
-					default:
-						processMissingOrInvalidResponse(responses, input);
-						break;
-				}
-				}
-				catch (Exception e) {
-					logger.error("Error processing response");
-				}
-			}
-			
-		}
-		catch (Exception e) {
-			logger.error("Error processing Server response");
-		}
-	
-	}
-
-	private static void processMissingOrInvalidResponse(ArrayList<String> responses, DataInputStream input) {
-		logger.error("Incorrectly formed server response");
-		
-	}
-
-	private static void processInvalidResponse(ArrayList<String> responses, DataInputStream input) {
-		logger.error("Incorrectly formed server response");
-		
-	}
-
-	private static void processRemoveResponse(ArrayList<String> responses, DataInputStream input) {
-		genericResponse(responses, "Remove");
-		
-	}
-
-	private static void processShareResponse(ArrayList<String> responses, DataInputStream input) {
-		genericResponse(responses, "Share");
-		
-	}
-
-	private static void processPublishResponse(ArrayList<String> responses, DataInputStream input) {
-		genericResponse(responses, "Publish");
-	}
-	
-	private static void genericResponse(ArrayList<String> responses, String commandName) {
-		Response response = (new Response()).fromJson(responses.get(0));
-		if (response.response.equals("success")) {
-			logger.info(commandName+" successful");
-		}
-		else {
-			logger.info(commandName+" unsuccessful: "+response.errorMessage);
+				logger.info(new Resource().fromJson(fromServer).toJson());
+			}			
 		}
 	}
-
-	private static void processFetchResponse(ArrayList<String> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	private static void processQueryResponse(ArrayList<String> responses, DataInputStream input) {
-		Response firstResponse = (new Response()).fromJson(responses.get(0));
-		Response lastResponse = (new Response()).fromJson(responses.get(responses.size()-1));
-
-		if (firstResponse.response.equals("success")) {
-			logger.info(lastResponse.resultSize+" results returned: ");
-			for (int i =1; i<responses.size()-1;i++) {
-				logger.info("    "+responses.get(i));
-			}
-		}
-		else {
-			logger.info("Query unsuccessful: "+firstResponse.errorMessage);
-		}
-		
-	}
-	
-	// Skeleton method to be used if we need to implement any error checking
-	private static boolean parseResponseForErrors(Response response, DataInputStream input) {
-		
-		boolean errorFound = false;
-		return errorFound;
-	}
-	
 
 	/**
 	 * 
@@ -271,7 +190,7 @@ public class Client {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public void receiveFile(String fileName, int fileSize, Socket socket) throws IOException {
+	public void receiveFile(String fileName, int fileSize) throws IOException {
 		InputStream is = socket.getInputStream();
 		FileOutputStream fos = new FileOutputStream(fileName);
 		BufferedOutputStream bos = new BufferedOutputStream(fos);
