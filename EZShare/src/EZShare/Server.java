@@ -9,9 +9,15 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadLocalRandom;
 
 import javax.net.ServerSocketFactory;
 
@@ -22,6 +28,7 @@ public class Server {
 
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
 	public static final int TIME_OUT_LIMIT = 5000;
 	private static Logger logger;
 	private Response successResponse;
@@ -90,6 +97,12 @@ public class Server {
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
 			logger.info("Listening for request...");
 
+			// Schedule EXCHANGE with server from servers list every X seconds
+			// (standard: 600 seconds = 10 minutes)
+			logger.info("Setting up server exchange every " + this.serverArgs.getSafeExchangeInterval() + " seconds");
+			Timer timer = new Timer();
+			timer.schedule(new ExchangeJob(), 0, this.serverArgs.getSafeExchangeInterval() * 1000);
+
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
@@ -134,7 +147,8 @@ public class Server {
 					processFetchCommand(command, output);
 					break;
 				case Constants.exchangeCommand:
-					processExchangeCommand(command, output);
+					processExchangeCommand(command, output,
+							new ServerInfo(client.getInetAddress().getHostName(), client.getPort()));
 					break;
 				case Constants.publishCommand:
 					processPublishCommand(command, output);
@@ -264,8 +278,6 @@ public class Server {
 
 	private void processQueryCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing QUERY command");
-		
-		// TODO Implement query relay (how???)
 
 		if (command.resourceTemplate == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
@@ -328,25 +340,117 @@ public class Server {
 					resource.owner = owner;
 				}
 			}
+
+			// Relay
+			if (command.relay) {
+				// "The owner and channel information in the original query are
+				// both set to "" in the forwarded query"
+				command.resourceTemplate.owner = Constants.emptyString;
+				command.resourceTemplate.channel = Constants.emptyString;
+
+				// "Relay field is set to false"
+				command.relay = false;
+
+				// Forward query to all servers in servers list
+				final CountDownLatch latch = new CountDownLatch(this.servers.size());
+				final ArrayList<Integer> countArray = new ArrayList<>();
+				for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
+					ServerInfo serverInfo = entry.getKey();
+
+					// Create a new thread for each ServerInfo object
+					Thread relayThread = new Thread("RelayHandler") {
+						@Override
+						public void run() {
+							Socket socket;
+							try {
+								socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+								socket.setSoTimeout(TIME_OUT_LIMIT); // wait for
+								// 5
+								// seconds
+								DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
+								DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+
+								sendString(command.toJson(), outToServer);
+
+								int resourceCount = 0;
+								boolean run = false;
+								do {
+									String fromServer = inFromServer.readUTF();
+									logger.debug("RECEIVED: " + fromServer);
+									if (fromServer.contains("success")) {
+										run = true;
+									}
+									if (fromServer.contains("resultSize")) {
+										run = false;
+									}
+									if (fromServer.contains("\"ezserver\":\"" + serverInfo.getHostname() + ":"
+											+ serverInfo.getPort() + "\"")) {
+										resourceCount++;
+										sendString(fromServer, output);
+									}
+
+								} while (run);
+
+								synchronized (countArray) {
+									countArray.add(resourceCount);
+								}
+								socket.close();
+							} catch (UnknownHostException e) {
+								logger.error(e.getClass().getName() + " " + e.getMessage());
+							} catch (IOException e) {
+								logger.error(e.getClass().getName() + " " + e.getMessage());
+							} finally {
+								latch.countDown();
+							}
+						}
+					};
+					relayThread.start();
+				}
+
+				try {
+					// Wait for all threads to be finished
+					latch.await();
+				} catch (InterruptedException e) {
+					logger.error(e.getClass().getName() + " " + e.getMessage());
+				}
+
+				for (int i : countArray) {
+					count += i;
+				}
+			}
+
 			Response response = new Response();
 			response.resultSize = count;
 			sendResponse(response, output);
 		}
 	}
 
-	private void processExchangeCommand(Command command, DataOutputStream output) {
+	private void processExchangeCommand(Command command, DataOutputStream output, ServerInfo source) {
 		logger.debug("Processing EXCHANGE command");
-		// TODO Auto-generated method stub
+
+		if (command.serverList == null || command.serverList.size() == 0) {
+			sendResponse(buildErrorResponse("missing or invalid server list"), output);
+		} else {
+			for (ServerInfo serverInfo : command.serverList) {
+				// Check if that is our current server
+				if (serverInfo.getHostname() != serverArgs.getSafeHost()
+						|| serverInfo.getPort() != serverArgs.getSafePort()) {
+					// Add server to server list
+					servers.put(serverInfo, true);
+				}
+			}
+
+			sendResponse(buildSuccessResponse(), output);
+		}
 	}
 
 	private void processFetchCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing FETCH command");
 		// TODO Auto-generated method stub
-		
 
 		// Check for invalid resourceTemplate fields
 		if (command.resourceTemplate == null) {
-			sendResponse(buildErrorResponse("missing resourceTemplate"),output);
+			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
 		} else if (command.resourceTemplate.uri == null || command.resourceTemplate.uri.length() == 0
 				|| command.resourceTemplate.uri.equals(Constants.emptyString)) {
 			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
@@ -360,18 +464,21 @@ public class Server {
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
-				if (resource.channel.equals(command.resourceTemplate.channel) && resource.uri.equals(command.resourceTemplate.uri)) {
+				if (resource.channel.equals(command.resourceTemplate.channel)
+						&& resource.uri.equals(command.resourceTemplate.uri)) {
 					sendResponse(buildSuccessResponse(), output);
-										
+
 					try {
 						URI uri = new URI(resource.uri);
 						File file = new File(uri);
-				        long length = file.length();
+						long length = file.length();
 
 						resource.resourceSize = length;
-												
-						// "The server will never reveal the owner of a resource in
-						// a response. If a resource has an owner then it will be
+
+						// "The server will never reveal the owner of a resource
+						// in
+						// a response. If a resource has an owner then it will
+						// be
 						// replaced with the "*" character."
 						resource.owner = "*";
 
@@ -379,10 +486,10 @@ public class Server {
 
 						// Reset owner
 						resource.owner = owner;
-						
+
 						// TODO convert file into bytes
 						// TODO write bytes to output
-						
+
 						Response response = new Response();
 						response.resultSize = 1;
 						sendResponse(response, output);
@@ -391,10 +498,10 @@ public class Server {
 					} catch (URISyntaxException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
-					} 
+					}
 				}
 			}
-		}		
+		}
 	}
 
 	private void processShareCommand(Command command, DataOutputStream output) {
@@ -505,6 +612,87 @@ public class Server {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
+	}
+
+	class ExchangeJob extends TimerTask {
+		private ServerInfo source;
+
+		public ExchangeJob() {
+			super();
+		}
+		
+		public ExchangeJob(ServerInfo source) {
+			super();
+			this.source = source;
+		}
+
+		public void run() {
+			logger.info("Exchanging server list...");
+			if (servers.size() > 0) {
+				// "The server contacts a randomly selected server from the
+				// Server Records ..."
+				int randomServerLocation = ThreadLocalRandom.current().nextInt(0, servers.size());
+				List<ServerInfo> keysAsArray = new ArrayList<ServerInfo>(servers.keySet());
+				ServerInfo randomServer = keysAsArray.get(randomServerLocation);
+
+				logger.debug("Randomly selected server " + randomServer.getHostname() + ":" + randomServer.getPort());
+				if (this.source == null || !this.source.equals(randomServer)) {
+					// Make servers JSON appropriate
+					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
+					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
+						ServerInfo serverInfo = entry.getKey();
+						// TODO: This check needed? Project says: "It provides
+						// the
+						// selected server with a copy of its entire Server
+						// Records
+						// list."
+						if (!randomServer.equals(serverInfo)) {
+							serversAsString += serverInfo.getHostname() + ":" + serverInfo.getPort() + ",";
+						}
+					}
+
+					// Remove last comma of string
+					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
+
+					// "... and initiates an EXCHANGE command with it."
+					String[] args = { "-" + Constants.exchangeOption, "-" + Constants.serversOption, serversAsString };
+					ClientArgs exchangeArgs = new ClientArgs(args);
+					Command command = new Command().buildExchange(exchangeArgs);
+
+					Socket socket;
+					try {
+						socket = new Socket(randomServer.getHostname(), randomServer.getPort());
+						socket.setSoTimeout(TIME_OUT_LIMIT); // wait for seconds
+						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
+						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+
+						sendString(command.toJson(), outToServer);
+						String fromServer = inFromServer.readUTF();
+						logger.debug("RECEIVED: " + fromServer);
+						if (!fromServer.contains("success")) {
+							removeServer(randomServer);
+						}
+
+						socket.close();
+					} catch (UnknownHostException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+						removeServer(randomServer);
+					} catch (IOException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+						removeServer(randomServer);
+					}
+				} else {
+					logger.info("Randomly selected server was exchange command source -- no action taken");
+				}
+			} else {
+				logger.info("No server in server list");
+			}
+		}
+
+		private void removeServer(ServerInfo serverInfo) {
+			logger.debug("Removing server due to not being reachable or a communication error having occurred");
+			servers.remove(serverInfo);
 		}
 	}
 }

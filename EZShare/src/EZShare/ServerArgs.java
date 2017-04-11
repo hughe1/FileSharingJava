@@ -64,4 +64,15 @@ public class ServerArgs extends ArgsManager {
 		}
 		return this.getOptionValue(Constants.secretOption);
 	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public int getSafeExchangeInterval() {
+		if (!this.hasOption(Constants.exchangeIntervalOption)) {
+			return 600; 
+		}
+		return Integer.parseInt(this.getOptionValue(Constants.exchangeIntervalOption));
+	}
 }
