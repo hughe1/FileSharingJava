@@ -37,52 +37,6 @@ public class Client {
 
 
 
-		
-		
-		// TODO: Remove if -- solely for testing purposes
-		if (args.length == 0) {
-			
-//			 String[] args2 = { "-" + Constants.shareOption, "-" +
-//			 Constants.uriOption,
-//			 "file:///Users/alexandrafritzen/ezshare.jar", "-" +
-//			 Constants.nameOption, "EZShare JAR",
-//			 "-" + Constants.descriptionOption, "The jar file for EZShare.",
-//			 "-" + Constants.tagsOption, "jar", "-" + Constants.channelOption,
-//			 "myprivatechannel",
-//			 "-" + Constants.ownerOption, "aaron010", "-" +
-//			 Constants.secretOption, "1234",
-//			 "-" + Constants.debugOption };
-
-			// PUBLISH
-			// String[] args2 = { "-" + Constants.publishOption, "-" +
-			// Constants.nameOption, "Unimelb website",
-			// "-" + Constants.descriptionOption, "The main page for the
-			// University of Melbourne",
-			// "-" + Constants.uriOption, "http://www.unimelb.edu.au", "-" +
-			// Constants.tagsOption, "web,html",
-			// "-" + Constants.ownerOption, "Alex", "-" + Constants.debugOption,
-			// "-" + Constants.debugOption
-			// };
-
-			// REMOVE
-			// String[] args2 = { "-" + Constants.removeOption, "-" +
-			// Constants.uriOption, "http://www.unimelb.edu.au", "-" +
-			// Constants.debugOption };
-			
-			// QUERY
-//			String[] args2 = { "-" + Constants.queryOption, "-" + Constants.channelOption, "myprivatechannel",
-//					"-" + Constants.descriptionOption, "jar",
-//					"-" + Constants.debugOption };
-
-			// FETCH
-			//String[] args2 = { "-" + Constants.fetchOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.uriOption, "file:///Users/alexandrafritzen/ezshare.jar"};
-			//args = args2;
-			//for (int i=0;i<(args).length;i++) {
-			//	System.out.println(args[i]);
-			//}
-		}
-
-		// String[] args2 = { "-exchange", "-servers", "host1:sadf"};
 		Client client = new Client(args);
 
 
@@ -93,7 +47,6 @@ public class Client {
 		} else {
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
 		}
-		//Logger logger = LogManager.getRootLogger();
 		logger = LogManager.getRootLogger();
 
 		logger.debug("Debugger enabled");
@@ -298,52 +251,10 @@ public class Client {
 		
 	}
 	
-	// DO THIS
+	// Skeleton method to be used if we need to implement any error checking
 	private static boolean parseResponseForErrors(Response response, DataInputStream input) {
-		// "String values must not contain the "\0" character, nor start or end
-		// with whitespace."
-		// "The field must not be the single character "*"."
-		// TODO Check if every possible case is covered
+		
 		boolean errorFound = false;
-/*
-		ArrayList<String> stringValues = new ArrayList<>();
-		stringValues.add(command.secret);
-		if (command.resource != null) {
-			String[] strings = { command.resource.name, command.resource.description, command.resource.uri,
-					command.resource.channel, command.resource.owner, command.resource.ezserver };
-			stringValues.addAll(Arrays.asList(strings));
-			if (command.resource.tags != null) {
-				stringValues.addAll(command.resource.tags);
-			}
-		}
-		if (command.resourceTemplate != null) {
-			String[] strings = { command.resourceTemplate.name, command.resourceTemplate.description,
-					command.resourceTemplate.uri, command.resourceTemplate.channel, command.resourceTemplate.owner,
-					command.resourceTemplate.ezserver };
-			stringValues.addAll(Arrays.asList(strings));
-			if (command.resourceTemplate.tags != null) {
-				stringValues.addAll(command.resourceTemplate.tags);
-			}
-		}
-
-		for (String value : stringValues) {
-			if (value == null) {
-				// Do nothing
-			} else if (value.equals("*")) {
-				//sendResponse(buildErrorResponse("String values cannot be *"), output);
-				errorFound = true;
-				break;
-			} else if (value != value.trim()) {
-				//sendResponse(buildErrorResponse("String values cannot start or end with whitespace(s)"), output);
-				errorFound = true;
-				break;
-			} else if (value.contains("\0")) {
-				//sendResponse(buildErrorResponse("String values cannot contain \0"), output);
-				errorFound = true;
-				break;
-			}
-		}
-*/
 		return errorFound;
 	}
 	
