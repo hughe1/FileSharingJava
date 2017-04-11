@@ -52,7 +52,7 @@ public class Command extends JsonModel {
 	 * 
 	 * @param cmd
 	 *            contains input from the user.
-	 * @return new ClientArgs object modeling the user input.
+	 * @return new ClientArgs object modelling the user input.
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		// ensure that clientArgs contains a query, otherwise exit

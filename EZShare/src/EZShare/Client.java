@@ -1,8 +1,11 @@
 package EZShare;
 
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -25,7 +28,7 @@ public class Client {
 
 	private ClientArgs clientArgs;
 	public static final int TIME_OUT_LIMIT = 5000;
-
+ 
 	public static void main(String[] args) {
 		// TODO: Remove if -- solely for testing purposes
 		if (args.length == 0) {
@@ -63,9 +66,9 @@ public class Client {
 //					"-" + Constants.debugOption };
 
 			// FETCH
-			String[] args2 = { "-" + Constants.fetchOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.uriOption, "file:///Users/alexandrafritzen/ezshare.jar"};
-
-			args = args2;
+//			String[] args2 = { "-" + Constants.fetchOption, "-" + Constants.channelOption, "myprivatechannel", "-" + Constants.uriOption, "file:///Users/alexandrafritzen/ezshare.jar"};
+//
+//			args = args2;
 		}
 
 		// String[] args2 = { "-exchange", "-servers", "host1:sadf"};
@@ -73,14 +76,15 @@ public class Client {
 
 		// Configure logger
 		if (client.clientArgs.hasOption(Constants.debugOption)) {
-			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
+			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
-			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
+			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
 		}
 		Logger logger = LogManager.getRootLogger();
 		logger.debug("Debugger enabled");
 
 		Command command = client.parseCommand();
+		
 		ServerInfo serverInfo = client.parseServerInfo();
 
 		logger.debug("Publishing to " + serverInfo);
@@ -110,7 +114,7 @@ public class Client {
 				if (fromServer.contains("resultSize"))
 					run = false;
 				logger.debug("RECEIVED: " + fromServer);
-				processServerResponse(fromServer);
+				client.processServerResponse(fromServer);
 			} while (run);
 
 			socket.close();
@@ -156,5 +160,34 @@ public class Client {
 	 */
 	public static void processServerResponse(String response) {
 		// TODO ?
+	}
+	
+	/**
+	 * 
+	 * @param fileName
+	 * @param fileSize
+	 * @param socket
+	 * @throws IOException
+	 */
+	public void receiveFile(String fileName, int fileSize, Socket socket) throws IOException {
+		InputStream is = socket.getInputStream();
+		FileOutputStream fos = new FileOutputStream(fileName);
+		BufferedOutputStream bos = new BufferedOutputStream(fos);
+		// create a bytes array + 1 byte.. otherwise it will hang
+		byte[] bytes  = new byte [fileSize+1];
+	    int bytesRead = is.read(bytes,0,bytes.length);
+	    // System.out.println("bytes read: " + bytesRead);
+	    int current = bytesRead;
+	    do {
+	    	bytesRead = is.read(bytes, current, (bytes.length-current));
+	    	// System.out.println("bytes read: " + bytesRead);
+	    	if(bytesRead >= 0) current += bytesRead;
+	    } while (bytesRead > -1);
+	    // bytes left over on the buffer
+	    bos.write(bytes);
+	    bos.flush();
+	    // close in and out streams
+	    fos.close();
+	    bos.close();
 	}
 }
