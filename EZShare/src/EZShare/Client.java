@@ -10,9 +10,6 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -71,41 +68,30 @@ public class Client {
 
 			logger.debug("SENT: " + command.toJson());
 
-			// TODO processing the responses in a better way
-			// TODO: Implement timeout
-			boolean run = false;
-
-			ArrayList<String> responses = new ArrayList<String>();
-			do {
-				String fromServer = inFromServer.readUTF();
-				
-
-				if (fromServer.contains("success") && command.command.equals("QUERY")
-						|| command.command.equals("FETCH"))
-					run = true;
-				
-				if (fromServer.contains("resultSize"))
-					run = false;
-				logger.debug("RECEIVED: " + fromServer);
-				//client.processServerResponse(fromServer);
-
-				String response = fromServer;
-				responses.add(response);
-
-				
-				//logger.info("Server response successfully processed ");
-			} while (run);
-			
-			client.processServerResponse(command, responses, inFromServer);
-
+			// block call
+			String fromServer = inFromServer.readUTF();
+			if(fromServer.contains("error")) {
+				// onError
+				Response response = new Response().fromJson(fromServer);
+				logger.error(response.toJson());
+			}
+			else if(fromServer.contains("success")) {
+				// onSuccess()
+				Response response = new Response().fromJson(fromServer);
+				logger.info(response.toJson());
+				client.onSuccess(command,inFromServer);
+			}
+			else {
+				// something went wrong
+				logger.error("Something went wrong when receiving reponse from Server");
+			}
 			socket.close();
+			
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (SocketTimeoutException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 		
@@ -136,15 +122,33 @@ public class Client {
 	public ServerInfo parseServerInfo() {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
+	
+	public void onSuccess(Command command, DataInputStream inFromServer) {
+		// TODO: process all types of queries here
+		// publish, remove, share, exchange -> only print the response
+		// query, fetch -> have to deal with these dynamically
+		switch (command.command) {
+		case Constants.queryCommand:
+			// TODO: deal with a query here
+			System.out.println("in development");
+			break;
+		case Constants.fetchCommand:
+			// TODO: deal with fetch here
+			System.out.println("in development");
+			break;
+		default:
+			// logger.info(command.toJson());
+			// not much to do here
+			break;
+		}
+	}
 
 	/**
 	 * 
 	 */
 	public void processServerResponse(Command command, ArrayList<String> responses, DataInputStream input) {
 		try 
-		{	
-
-			
+		{			
 			int number_responses = responses.size();
 			int number_correct_responses = 0;
 			for (int i = 0;i<number_responses;i++) {
@@ -195,7 +199,7 @@ public class Client {
 			logger.error("Error processing Server response");
 		}
 	
-}
+	}
 
 	private static void processMissingOrInvalidResponse(ArrayList<String> responses, DataInputStream input) {
 		logger.error("Incorrectly formed server response");

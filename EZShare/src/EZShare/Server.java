@@ -700,6 +700,12 @@ public class Server {
 		servers.remove(serverInfo);
 	}
 
+	/**
+	 * 
+	 * @param file
+	 * @param socket
+	 * @throws IOException
+	 */
 	public void sendFile(File file, Socket socket) throws IOException {
 		// define an array as the length of the file
 		byte[] bytes = new byte[(int) file.length()];
