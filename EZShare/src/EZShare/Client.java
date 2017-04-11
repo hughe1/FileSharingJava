@@ -84,17 +84,13 @@ public class Client {
 
 		// String[] args2 = { "-exchange", "-servers", "host1:sadf"};
 		Client client = new Client(args);
-		
-		// print current classpath (for debugging)
-		//System.out.println(System.getProperty("java.class.path"));
+
 
 		// Configure logger
 		if (client.clientArgs.hasOption(Constants.debugOption)) {
 
-			//System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
-			//System.setProperty("log4j.configurationFile", "logging-config-default.xml");
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
 		}
 		//Logger logger = LogManager.getRootLogger();
@@ -110,7 +106,6 @@ public class Client {
 		
 		try {
 			logger.info("Connecting to host "+serverInfo.getHostname()+" at port "+serverInfo.getPort());
-			//Socket socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 			socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 			socket.setSoTimeout(TIME_OUT_LIMIT); // wait for 5 seconds
 			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
@@ -121,17 +116,13 @@ public class Client {
 			outToServer.flush();
 			logger.info(command.command+" command sent. Waiting for response.. ");
 
-			
-			// Doesn't work with the logger due to multiple lines being
-			// generated
-			// logger.info(command.toJsonPretty());
 			logger.debug("SENT: " + command.toJson());
 
 			// TODO processing the responses in a better way
 			// TODO: Implement timeout
 			boolean run = false;
-			//String responseString = "";
-			ArrayList<Response> responses = new ArrayList<Response>();
+
+			ArrayList<String> responses = new ArrayList<String>();
 			do {
 				String fromServer = inFromServer.readUTF();
 				
@@ -143,9 +134,8 @@ public class Client {
 				if (fromServer.contains("resultSize"))
 					run = false;
 				logger.debug("RECEIVED: " + fromServer);
-				//logger.info("Response received from Server. Processing.. ");
-				//responseString += fromServer;
-				Response response = (new Response()).fromJson(fromServer);
+
+				String response = fromServer;
 				responses.add(response);
 
 				
@@ -165,11 +155,6 @@ public class Client {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 		
-	}
-
-	private static void processQuery(String test) {
-		// TODO Auto-generated method stub
-		logger.info("THIS IS THE PROCESS QUERY METHOD STUB");
 	}
 
 	/**
@@ -201,7 +186,7 @@ public class Client {
 	/**
 	 * 
 	 */
-	public void processServerResponse(Command command, ArrayList<Response> responses, DataInputStream input) {
+	public void processServerResponse(Command command, ArrayList<String> responses, DataInputStream input) {
 		try 
 		{	
 
@@ -209,7 +194,8 @@ public class Client {
 			int number_responses = responses.size();
 			int number_correct_responses = 0;
 			for (int i = 0;i<number_responses;i++) {
-				if (!parseResponseForErrors(responses.get(i), input)) {
+				Response response = (new Response()).fromJson(responses.get(i));
+				if (!parseResponseForErrors(response, input)) {
 					 number_correct_responses +=1;
 				}
 			}
@@ -228,12 +214,6 @@ public class Client {
 					case Constants.fetchCommand:
 						processFetchResponse(responses, input);
 						break;
-						
-						// clients dont deal with exchange commands
-						
-					//case Constants.exchangeCommand:
-					//	processExchangeResponse(command, output);
-					//	break;
 					case Constants.publishCommand:
 						processPublishResponse(responses, input);
 						break;
@@ -260,52 +240,65 @@ public class Client {
 		catch (Exception e) {
 			logger.error("Error processing Server response");
 		}
-		// TODO ?
 	
 }
 
-	private static void processMissingOrInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
-		logger.error("Incorretly formed server response");
+	private static void processMissingOrInvalidResponse(ArrayList<String> responses, DataInputStream input) {
+		logger.error("Incorrectly formed server response");
 		
 	}
 
-	private static void processInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
-		logger.error("Incorretly formed server response");
+	private static void processInvalidResponse(ArrayList<String> responses, DataInputStream input) {
+		logger.error("Incorrectly formed server response");
 		
 	}
 
-	private static void processRemoveResponse(ArrayList<Response> responses, DataInputStream input) {
+	private static void processRemoveResponse(ArrayList<String> responses, DataInputStream input) {
 		genericResponse(responses, "Remove");
 		
 	}
 
-	private static void processShareResponse(ArrayList<Response> responses, DataInputStream input) {
+	private static void processShareResponse(ArrayList<String> responses, DataInputStream input) {
 		genericResponse(responses, "Share");
 		
 	}
 
-	private static void processPublishResponse(ArrayList<Response> responses, DataInputStream input) {
+	private static void processPublishResponse(ArrayList<String> responses, DataInputStream input) {
 		genericResponse(responses, "Publish");
 	}
 	
-	private static void genericResponse(ArrayList<Response> responses, String commandName) {
-		if (responses.get(0).response.equals("success")) {
+	private static void genericResponse(ArrayList<String> responses, String commandName) {
+		Response response = (new Response()).fromJson(responses.get(0));
+		if (response.response.equals("success")) {
 			logger.info(commandName+" successful");
 		}
 		else {
-			logger.info(commandName+" unsuccessful: "+responses.get(0).errorMessage);
+			logger.info(commandName+" unsuccessful: "+response.errorMessage);
 		}
 	}
 
-	private static void processFetchResponse(ArrayList<Response> responses, DataInputStream input) {
+	private static void processFetchResponse(ArrayList<String> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processQueryResponse(ArrayList<Response> responses, DataInputStream input) {
-		// TODO Auto-generated method stub
+	private static void processQueryResponse(ArrayList<String> responses, DataInputStream input) {
+		Response firstResponse = (new Response()).fromJson(responses.get(0));
+		Response lastResponse = (new Response()).fromJson(responses.get(responses.size()-1));
+
+		if (firstResponse.response.equals("success")) {
+			logger.info(lastResponse.resultSize+" results returned: ");
+			for (int i =1; i<responses.size()-1;i++) {
+				logger.info("    "+responses.get(i));
+			}
+		}
+		else {
+			logger.info("Query unsuccessful: "+firstResponse.errorMessage);
+		}
 		
 	}
+	
+	// DO THIS
 	private static boolean parseResponseForErrors(Response response, DataInputStream input) {
 		// "String values must not contain the "\0" character, nor start or end
 		// with whitespace."
