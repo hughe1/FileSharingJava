@@ -32,18 +32,9 @@ public class Client {
 	private static Logger logger;
 	private static Socket socket;
 	
-	//private static HashMap<String, Runnable> commandMap = new HashMap<String, Runnable>();
-
 
 	public static void main(String[] args) {
-		/*
-		commandMap.put("PUBLISH", () -> processQuery());
-		commandMap.put("REMOVE", () -> processQuery());
-		commandMap.put("SHARE", () -> processQuery());
-		commandMap.put("QUERY", () -> processQuery());
-		commandMap.put("FETCH", () -> processQuery());
-		commandMap.put("EXCHANGE", () -> processQuery());
-		*/
+
 
 
 		
@@ -139,9 +130,12 @@ public class Client {
 			// TODO processing the responses in a better way
 			// TODO: Implement timeout
 			boolean run = false;
+			//String responseString = "";
+			ArrayList<Response> responses = new ArrayList<Response>();
 			do {
 				String fromServer = inFromServer.readUTF();
-				//logger.info("logga");
+				
+
 				if (fromServer.contains("success") && command.command.equals("QUERY")
 						|| command.command.equals("FETCH"))
 					run = true;
@@ -150,9 +144,15 @@ public class Client {
 					run = false;
 				logger.debug("RECEIVED: " + fromServer);
 				//logger.info("Response received from Server. Processing.. ");
-				processServerResponse(fromServer);
+				//responseString += fromServer;
+				Response response = (new Response()).fromJson(fromServer);
+				responses.add(response);
+
+				
 				//logger.info("Server response successfully processed ");
 			} while (run);
+			
+			client.processServerResponse(command, responses, inFromServer);
 
 			socket.close();
 		} catch (UnknownHostException e) {
@@ -201,39 +201,53 @@ public class Client {
 	/**
 	 * 
 	 */
-	public static void processServerResponse(String response) {
+	public void processServerResponse(Command command, ArrayList<Response> responses, DataInputStream input) {
+		logger.info("processing: "+responses);
 		try 
-		{
-			// TODO: implement proper logic
-			
-			Command command = (new Command()).fromJson(response);
-			DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+		{	
 
-			if (!parseResponseForErrors(command, output)) {
+			
+			int number_responses = responses.size();
+			int number_correct_responses = 0;
+			for (int i = 0;i<number_responses;i++) {
+				if (parseResponseForErrors(responses.get(i), input)) {
+					 number_correct_responses +=1;
+				}
+			}
+			
+			logger.info(number_correct_responses+" with correct json syntax out of "+number_responses+" total responses");
+			if (number_correct_responses != number_responses) {
+				logger.error("Error parsing response from server");
+			}
+			else {
+
 				switch (command.command) {
 					case Constants.queryCommand:
-						processQueryResponse(command, output);
+						processQueryResponse(responses, input);
 						break;
 					case Constants.fetchCommand:
-						processFetchResponse(command, output);
+						processFetchResponse(responses, input);
 						break;
+						
+						// clients dont deal with exchange commands
+						
 					//case Constants.exchangeCommand:
 					//	processExchangeResponse(command, output);
 					//	break;
 					case Constants.publishCommand:
-						processPublishResponse(command, output);
+						processPublishResponse(responses, input);
 						break;
 					case Constants.shareCommand:
-						processShareResponse(command, output);
+						processShareResponse(responses, input);
 						break;
 					case Constants.removeCommand:
-						processRemoveResponse(command, output);
+						processRemoveResponse(responses, input);
 						break;
 					case Constants.invalidCommand:
-						processInvalidResponse(command, output);
+						processInvalidResponse(responses, input);
 						break;
 					default:
-						processMissingOrInvalidResponse(command, output);
+						processMissingOrInvalidResponse(responses, input);
 						break;
 				}
 			}
@@ -246,52 +260,52 @@ public class Client {
 	
 }
 
-	private static void processMissingOrInvalidResponse(Command command, DataOutputStream output) {
+	private static void processMissingOrInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processInvalidResponse(Command command, DataOutputStream output) {
+	private static void processInvalidResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processRemoveResponse(Command command, DataOutputStream output) {
+	private static void processRemoveResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processShareResponse(Command command, DataOutputStream output) {
+	private static void processShareResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processPublishResponse(Command command, DataOutputStream output) {
+	private static void processPublishResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processExchangeResponse(Command command, DataOutputStream output) {
+	private static void processExchangeResponse(ArrayList<Response> responses,DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processFetchResponse(Command command, DataOutputStream output) {
+	private static void processFetchResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private static void processQueryResponse(Command command, DataOutputStream output) {
+	private static void processQueryResponse(ArrayList<Response> responses, DataInputStream input) {
 		// TODO Auto-generated method stub
 		
 	}
-	private static boolean parseResponseForErrors(Command command, DataOutputStream output) {
+	private static boolean parseResponseForErrors(Response response, DataInputStream input) {
 		// "String values must not contain the "\0" character, nor start or end
 		// with whitespace."
 		// "The field must not be the single character "*"."
 		// TODO Check if every possible case is covered
 		boolean errorFound = false;
-
+/*
 		ArrayList<String> stringValues = new ArrayList<>();
 		stringValues.add(command.secret);
 		if (command.resource != null) {
@@ -329,7 +343,7 @@ public class Client {
 				break;
 			}
 		}
-
+*/
 		return errorFound;
 	}
 	
