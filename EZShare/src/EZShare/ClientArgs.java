@@ -1,7 +1,12 @@
 package EZShare;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ClientArgs extends ArgsManager {
 
@@ -58,6 +63,13 @@ public class ClientArgs extends ArgsManager {
 	 */
 	public String getSafeHost() {
 		if (!this.hasOption(Constants.hostOption)) {
+			// "The default advertised host name will be the operating system supplied hostname."
+			try {
+				return InetAddress.getLocalHost().getHostName();
+			} catch (UnknownHostException e) {
+				Logger logger = LogManager.getRootLogger();
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+			} 
 			return "localhost"; // default host
 		}
 		return this.getOptionValue(Constants.hostOption);

@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -15,6 +16,7 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -28,21 +30,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Server {
-
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
 	public static final int TIME_OUT_LIMIT = 5000;
 	private static Logger logger;
 	private Response successResponse;
+	private HashMap<InetAddress, Long> clientAcesses = new HashMap<>();
 
 	public static void main(String[] args) {
-		// TODO: Remove if -- solely for testing purposes
-		if (args.length == 0) {
-			String[] args2 = { "-" + Constants.debugOption };
-			args = args2;
-		}
-
 		Server server = new Server(args);
 
 		if (server.serverArgs.hasOption(Constants.debugOption)) {
@@ -94,7 +90,6 @@ public class Server {
 	 * 
 	 */
 	public void listen() {
-		// TODO: Implement blocking until client request
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
 
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
@@ -106,21 +101,36 @@ public class Server {
 			Timer timer = new Timer();
 			timer.schedule(new ExchangeJob(), 0, this.serverArgs.getSafeExchangeInterval() * 1000);
 
+			int limit = this.serverArgs.getSafeConnectionInterval();
+
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
 				logger.info("Received request");
 
-				// TODO: replace this with a call to a class that will serve
-				// client
-				// i.e., implement a runnable class
-				// lambda expression
-				Thread t = new Thread(() -> this.serveClient(client));
-				t.start();
+				// "The server will ensure that the time between successive
+				// connections from any IP address will be no less than a limit
+				// (1 second by default but configurable on the command line)."
+				Long timestamp = this.clientAcesses.get(client.getInetAddress());
+				Long currentTime = System.currentTimeMillis();
+				if (timestamp != null && ((limit * 1000) + timestamp >= currentTime)) {
+					// "An incomming [sic] request that violates this rule will
+					// be closed immediately with no response."
+					logger.info("Same client sent request less than " + limit + " second(s) ago. Closed client.");
+					client.close();
+				} else {
+					// TODO: replace this with a call to a class that will serve
+					// client
+					// i.e., implement a runnable class
+					// lambda expression
+					Thread t = new Thread(() -> this.serveClient(client));
+					t.start();
+				}
+				// Record client access
+				this.clientAcesses.put(client.getInetAddress(), currentTime);
 			}
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -177,7 +187,6 @@ public class Server {
 		} catch (SocketTimeoutException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 	}
@@ -450,17 +459,13 @@ public class Server {
 
 	private void processFetchCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing FETCH command");
-		// TODO Auto-generated method stub
-
+		
 		// Check for invalid resourceTemplate fields
 		if (command.resourceTemplate == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
 		} else if (command.resourceTemplate.uri == null || command.resourceTemplate.uri.length() == 0
 				|| command.resourceTemplate.uri.equals(Constants.emptyString)) {
 			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
-		} else if (command.resourceTemplate.channel == null || command.resourceTemplate.channel.length() == 0
-				|| command.resourceTemplate.channel.equals(Constants.emptyString)) {
-			sendResponse(buildErrorResponse("invalid resourceTemplate - missing channel"), output);
 		} else if (!this.resources.containsKey(command.resourceTemplate)) {
 			sendResponse(buildErrorResponse("resource doesn't exist"), output);
 		} else {
@@ -614,7 +619,6 @@ public class Server {
 			output.flush();
 			logger.debug("SENT: " + string);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 	}
@@ -646,7 +650,7 @@ public class Server {
 					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
-						// TODO: This check needed? Project says: "It provides
+						// TODO This check needed? Project says: "It provides
 						// the
 						// selected server with a copy of its entire Server
 						// Records

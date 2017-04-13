@@ -1,7 +1,13 @@
 package EZShare;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.UUID;
+
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ServerArgs extends ArgsManager {
 
@@ -49,6 +55,13 @@ public class ServerArgs extends ArgsManager {
 	 */
 	public String getSafeHost() {
 		if (!this.hasOption(Constants.hostOption)) {
+			// "The default advertised host name will be the operating system supplied hostname."
+			try {
+				return InetAddress.getLocalHost().getHostName();
+			} catch (UnknownHostException e) {
+				Logger logger = LogManager.getRootLogger();
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+			} 
 			return "localhost"; // default host
 		}
 		return this.getOptionValue(Constants.hostOption);
@@ -60,7 +73,8 @@ public class ServerArgs extends ArgsManager {
 	 */
 	public String getSafeSecret() {
 		if (!this.hasOption(Constants.secretOption)) {
-			return "1234"; // TODO calculate(?)/randomly generate secret
+			// "The default secret will be a large random string."
+			return UUID.randomUUID().toString();
 		}
 		return this.getOptionValue(Constants.secretOption);
 	}
@@ -74,5 +88,16 @@ public class ServerArgs extends ArgsManager {
 			return 600; 
 		}
 		return Integer.parseInt(this.getOptionValue(Constants.exchangeIntervalOption));
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public int getSafeConnectionInterval() {
+		if (!this.hasOption(Constants.connectionIntervalLimitOption)) {
+			return 1; 
+		}
+		return Integer.parseInt(this.getOptionValue(Constants.connectionIntervalLimitOption));
 	}
 }
