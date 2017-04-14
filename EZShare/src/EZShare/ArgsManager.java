@@ -4,6 +4,13 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 
+/**
+ * The ArgsManager abstract class is intended to be extended by the ClientArgs and 
+ * ServerArgs classes.
+ * This abstract class provides the implementation of methods for printing help
+ * for an Options descriptor, and for accessing the argument provided for an option.
+ * 
+ */
 public abstract class ArgsManager {
 
 	protected Options options = new Options();
@@ -11,23 +18,24 @@ public abstract class ArgsManager {
 	protected CommandLine cmd = null;
 
 	/**
-	 * 
+	 * The printArgsHelp method prints the help for all options with usage 
+	 * statements then exits the program.
 	 */
 	public void printArgsHelp(String msg) {
-		// print to screen the arguments
-		this.formatter.printHelp(msg, this.options, true);
-		// exit the program entirely
+		// Print to screen the help for options with the specified input msg and
+		// automatically generated usage statement 
+		formatter.printHelp(msg, options, true);
 		System.exit(1);
 	}
 
 	/**
 	 * Wrapper method to access super.cmd. Required if class is used in another
-	 * package. i.e., super.cmd has protected access. This method expects the
+	 * package. i.e. super.cmd has protected access. This method expects the
 	 * option to be present.
 	 * 
 	 * @param option
 	 *            the name of the option
-	 * @return channel if cmd.hasOption("channel") == true otherwise it calls
+	 * @return value of option if cmd.hasOption("channel") == true otherwise it calls
 	 *         this.printArgsHelp() -> exits the program.
 	 */
 	public String getSafeOptionValue(String option) {
@@ -51,7 +59,7 @@ public abstract class ArgsManager {
 	}
 
 	/**
-	 * wrapper method for base.cmd. Required if this class is used in another
+	 * Wrapper method for base.cmd. Required if this class is used in another
 	 * package. super.cmd has protected access.
 	 * 
 	 * @param the

@@ -29,6 +29,7 @@ public class Client {
 
 	private ClientArgs clientArgs;
 	public static final int TIME_OUT_LIMIT = 5000;
+	
 	private static Logger logger;
 	private static Socket socket;
 	
@@ -38,7 +39,7 @@ public class Client {
 
 
 		// Configure logger
-		if (client.clientArgs.hasOption(Constants.debugOption)) {
+		if (client.clientArgs.hasOption(Command.DEBUG_OPTION)) {
 			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
@@ -62,9 +63,9 @@ public class Client {
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
 			outToServer.writeUTF(command.toJson());
-			logger.info("Sending "+command.command+" command... ");
+			logger.info("Sending "+command.getCommand()+" command... ");
 			outToServer.flush();
-			logger.info(command.command+" command sent. Waiting for response.. ");
+			logger.info(command.getCommand()+" command sent. Waiting for response.. ");
 
 			logger.debug("SENT: " + command.toJson());
 
@@ -127,12 +128,12 @@ public class Client {
 		// TODO: process all types of queries here
 		// publish, remove, share, exchange -> only print the response
 		// query, fetch -> have to deal with these dynamically
-		switch (command.command) {
-		case Constants.queryCommand:
+		switch (command.getCommand()) {
+		case Command.QUERY_COMMAND:
 			// TODO: deal with a query here
 			System.out.println("in development");
 			break;
-		case Constants.fetchCommand:
+		case Command.FETCH_COMMAND:
 			// TODO: deal with fetch here
 			System.out.println("in development");
 			break;
@@ -165,23 +166,23 @@ public class Client {
 			}
 			else {
 				try {
-				switch (command.command) {
-					case Constants.queryCommand:
+				switch (command.getCommand()) {
+					case Command.QUERY_COMMAND:
 						processQueryResponse(responses, input);
 						break;
-					case Constants.fetchCommand:
+					case Command.FETCH_COMMAND:
 						processFetchResponse(responses, input);
 						break;
-					case Constants.publishCommand:
+					case Command.PUBLISH_COMMAND:
 						processPublishResponse(responses, input);
 						break;
-					case Constants.shareCommand:
+					case Command.SHARE_COMMAND:
 						processShareResponse(responses, input);
 						break;
-					case Constants.removeCommand:
+					case Command.REMOVE_COMMAND:
 						processRemoveResponse(responses, input);
 						break;
-					case Constants.invalidCommand:
+					case Command.INVALID_COMMAND:
 						processInvalidResponse(responses, input);
 						break;
 					default:
@@ -227,11 +228,11 @@ public class Client {
 	
 	private static void genericResponse(ArrayList<String> responses, String commandName) {
 		Response response = (new Response()).fromJson(responses.get(0));
-		if (response.response.equals("success")) {
+		if (response.isSuccess()) {
 			logger.info(commandName+" successful");
 		}
 		else {
-			logger.info(commandName+" unsuccessful: "+response.errorMessage);
+			logger.info(commandName+" unsuccessful: "+response.getErrorMessage());
 		}
 	}
 
@@ -244,14 +245,14 @@ public class Client {
 		Response firstResponse = (new Response()).fromJson(responses.get(0));
 		Response lastResponse = (new Response()).fromJson(responses.get(responses.size()-1));
 
-		if (firstResponse.response.equals("success")) {
-			logger.info(lastResponse.resultSize+" results returned: ");
+		if (firstResponse.isSuccess()) {
+			logger.info(lastResponse.getResultSize() +" results returned: ");
 			for (int i =1; i<responses.size()-1;i++) {
 				logger.info("    "+responses.get(i));
 			}
 		}
 		else {
-			logger.info("Query unsuccessful: "+firstResponse.errorMessage);
+			logger.info("Query unsuccessful: "+firstResponse.getErrorMessage());
 		}
 		
 	}

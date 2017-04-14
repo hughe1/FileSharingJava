@@ -4,16 +4,13 @@ import java.util.ArrayList;
 
 /**
  * The class models the Resource json object as specified in the assignment. the
- * class implements hashCode and equals so that objects can be easily
- * hashed/compared when comparing against other Resource objects. Here the tuple
- * (channel,uri) is used as a PrimaryKey to identify the object.
- * 
- * Class additionally extends JsonModel for for easy to/from JSON functionality.
- * 
- * @author Koteski, B
+ * class implements hashCode and equals so that objects can be easily hashed 
+ * when comparing against other Resource objects. Here the tuple (channel,uri) is used as a PrimaryKey to identify the object.
  */
 
-public class Resource extends JsonModel {
+public class Resource extends JsonModel{
+	public static final String DEFAULT_STRING = "";
+			
 	public String name;
 	public ArrayList<String> tags;
 	public String description;
@@ -37,40 +34,34 @@ public class Resource extends JsonModel {
 	 * @param clientArgs
 	 */
 	public Resource(ClientArgs clientArgs) {
-		String name = clientArgs.getOptionValue(Constants.nameOption);		
-		this.name = name == null ? Constants.emptyString : name;
+		String name = clientArgs.getOptionValue(Command.NAME_OPTION);		
+		this.name = name == null ? DEFAULT_STRING : name;
 
-		this.addTags(clientArgs.getOptionValue(Constants.tagsOption));
+		this.addTags(clientArgs.getOptionValue(Command.TAGS_OPTION));
 		
-		String description = clientArgs.getOptionValue(Constants.descriptionOption);		
-		this.description = description == null ? Constants.emptyString : description;
+		String description = clientArgs.getOptionValue(Command.DESCRIPTION_OPTION);		
+		this.description = description == null ? DEFAULT_STRING : description;
 		
-		String uri = clientArgs.getOptionValue(Constants.uriOption);		
-		this.uri = uri == null ? Constants.emptyString : uri;
+		String uri = clientArgs.getOptionValue(Command.URI_OPTION);		
+		this.uri = uri == null ? DEFAULT_STRING : uri;
 		
-		String channel = clientArgs.getOptionValue(Constants.channelOption);		
-		this.channel = channel == null ? Constants.emptyString : channel;
+		String channel = clientArgs.getOptionValue(Command.CHANNEL_OPTION);		
+		this.channel = channel == null ? DEFAULT_STRING : channel;
 		
-		String owner = clientArgs.getOptionValue(Constants.ownerOption);		
-		this.owner = owner == null ? Constants.emptyString : owner;
+		String owner = clientArgs.getOptionValue(Command.OWNER_OPTION);		
+		this.owner = owner == null ? DEFAULT_STRING : owner;
 		
-		String ezserver = clientArgs.getOptionValue(Constants.ezserverOption);		
-		this.ezserver = ezserver == null ? Constants.emptyString : ezserver;
+		String ezserver = clientArgs.getOptionValue(Command.EZSERVER_OPTION);		
+		this.ezserver = ezserver == null ? DEFAULT_STRING : ezserver;
 	}
 
-	/**
-	 * 
-	 */
+	
 	@Override
 	public Resource fromJson(String json) {
 		return g.fromJson(json, Resource.class);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#hashCode()
-	 */
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -79,12 +70,8 @@ public class Resource extends JsonModel {
 		result = prime * result + ((uri == null) ? 0 : uri.hashCode());
 		return result;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
+	
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -93,17 +80,22 @@ public class Resource extends JsonModel {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
+		
+		//Safe to cast as Resource object now
 		Resource other = (Resource) obj;
 		if (channel == null) {
 			if (other.channel != null)
 				return false;
 		} else if (!channel.equals(other.channel))
 			return false;
+		
 		if (uri == null) {
 			if (other.uri != null)
 				return false;
 		} else if (!uri.equals(other.uri))
 			return false;
+		
+		//Matching channel and URI values
 		return true;
 	}
 
@@ -112,7 +104,7 @@ public class Resource extends JsonModel {
 	 * resulting token and adds it to the tags list if tokens exist.
 	 * 
 	 * @param tags
-	 *            has form tag1,tag2,tag3,...
+	 *            has the form tag1,tag2,tag3,...
 	 */
 	public void addTags(String tags) {
 		this.tags = new ArrayList<String>();
@@ -132,7 +124,7 @@ public class Resource extends JsonModel {
 	 */
 	public String getSafeOwner() {
 		if (this.owner == null)
-			return Constants.emptyString;
+			return DEFAULT_STRING;
 		else
 			return this.owner;
 	}

@@ -5,6 +5,7 @@ import java.net.UnknownHostException;
 
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,25 +17,26 @@ public class ClientArgs extends ArgsManager {
 	 */
 	public ClientArgs(String[] args) {
 		// builds the client argument options
-		this.options.addOption(Constants.channelOption, true, "channel");
-		this.options.addOption(Constants.debugOption, false, "print debug information");
-		this.options.addOption(Constants.descriptionOption, true, "resource description");
-		this.options.addOption(Constants.exchangeOption, false, "exchange server list with server");
-		this.options.addOption(Constants.fetchOption, false, "fetch resources from server");
-		this.options.addOption(Constants.hostOption, true, "server host, a domain name or IP address");
-		this.options.addOption(Constants.nameOption, true, "resource name");
-		this.options.addOption(Constants.ownerOption, true, "owner");
-		this.options.addOption(Constants.portOption, true, "server port, an integer");
-		this.options.addOption(Constants.publishOption, false, "publish resource on server");
-		this.options.addOption(Constants.queryOption, false, "query for resources from server");
-		this.options.addOption(Constants.removeOption, false, "remove resource from server");
-		this.options.addOption(Constants.secretOption, true, "secret");
-		this.options.addOption(Constants.serversOption, true, "server list, host1:port1,host2:port2,...");
-		this.options.addOption(Constants.shareOption, false, "share resource on server");
-		this.options.addOption(Constants.tagsOption, true, "resource tags, tag1,tag2,tag3,...");
-		this.options.addOption(Constants.uriOption, true, "resource URI");
-		this.options.addOption(Constants.relayOption, true, "relay Query");
-		// attempts to parse the args otherwise print help menu and exit
+		options.addOption(Command.CHANNEL_OPTION, true, "channel");
+		options.addOption(Command.DEBUG_OPTION, false, "print debug information");
+		options.addOption(Command.DESCRIPTION_OPTION, true, "resource description");
+		options.addOption(Command.EXCHANGE_OPTION, false, "exchange server list with server");
+		options.addOption(Command.FETCH_OPTION, false, "fetch resources from server");
+		options.addOption(Command.HOST_OPTION, true, "server host, a domain name or IP address");
+		options.addOption(Command.NAME_OPTION, true, "resource name");
+		options.addOption(Command.OWNER_OPTION, true, "owner");
+		options.addOption(Command.PORT_OPTION, true, "server port, an integer");
+		options.addOption(Command.PUBLISH_OPTION, false, "publish resource on server");
+		options.addOption(Command.QUERY_OPTION, false, "query for resources from server");
+		options.addOption(Command.REMOVE_OPTION, false, "remove resource from server");
+		options.addOption(Command.SECRET_OPTION, true, "secret");
+		options.addOption(Command.SERVERS_OPTION, true, "server list, host1:port1,host2:port2,...");
+		options.addOption(Command.SHARE_OPTION, false, "share resource on server");
+		options.addOption(Command.TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
+		options.addOption(Command.URI_OPTION, true, "resource URI");
+		options.addOption(Command.RELAY_OPTION, true, "relay Query");
+		
+		// Attempts to parse the args, in case of parse exception print help menu and exit
 		try {
 			this.cmd = new DefaultParser().parse(options, args);
 			// see if at least one argument was provided
@@ -51,10 +53,10 @@ public class ClientArgs extends ArgsManager {
 	 * @return
 	 */
 	public Integer getSafePort() {
-		if (!this.hasOption(Constants.portOption)) {
+		if (!this.hasOption(Command.PORT_OPTION)) {
 			return 3780; // default port
 		}
-		return Integer.parseInt(this.getOptionValue(Constants.portOption));
+		return Integer.parseInt(this.getOptionValue(Command.PORT_OPTION));
 	}
 
 	/**
@@ -62,7 +64,7 @@ public class ClientArgs extends ArgsManager {
 	 * @return
 	 */
 	public String getSafeHost() {
-		if (!this.hasOption(Constants.hostOption)) {
+		if (!this.hasOption(Command.HOST_OPTION)) {
 			// "The default advertised host name will be the operating system supplied hostname."
 			try {
 				return InetAddress.getLocalHost().getHostName();
@@ -72,7 +74,7 @@ public class ClientArgs extends ArgsManager {
 			} 
 			return "localhost"; // default host
 		}
-		return this.getOptionValue(Constants.hostOption);
+		return this.getOptionValue(Command.HOST_OPTION);
 	}
 
 }

@@ -2,49 +2,92 @@ package EZShare;
 
 import java.util.ArrayList;
 
+/**
+ * The Command class represents message that may be sent to a server.
+ * 
+ * Note:
+ * Null fields are NOT part of the message and will be disregarded when converting 
+ * to JSON.
+ */
 public class Command extends JsonModel {
+	
+	/* Defined commands recognized by the server */
+	public static final String QUERY_COMMAND = "QUERY";
+	public static final String PUBLISH_COMMAND = "PUBLISH";
+	public static final String FETCH_COMMAND = "FETCH";
+	public static final String EXCHANGE_COMMAND = "EXCHANGE";
+	public static final String SHARE_COMMAND = "SHARE";
+	public static final String REMOVE_COMMAND = "REMOVE";
+	public static final String INVALID_COMMAND = "INVALID";
 
-	public String command;
-	public String secret;
-	public Boolean relay;
-	public Resource resource;
-	public Resource resourceTemplate;
-	public ArrayList<ServerInfo> serverList;
+	/* Defined command options recognized by the server */
+	public static final String ADVERTISED_HOST_NAME_OPTION = "advertisedhostname";
+	public static final String CHANNEL_OPTION = "channel";
+	public static final String CONNECTION_INTERVAL_LIMIT_OPTION = "connectionintervallimit";
+	public static final String DEBUG_OPTION = "debug";
+	public static final String DESCRIPTION_OPTION = "description";
+	public static final String EXCHANGE_OPTION = "exchange";
+	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeInterval";
+	public static final String EZSERVER_OPTION = "ezserver";
+	public static final String FETCH_OPTION = "fetch";
+	public static final String HOST_OPTION = "host";
+	public static final String NAME_OPTION = "name";
+	public static final String OWNER_OPTION = "owner";
+	public static final String PORT_OPTION = "port";
+	public static final String PUBLISH_OPTION = "publish";
+	public static final String QUERY_OPTION = "query";
+	public static final String RELAY_OPTION = "relay";
+	public static final String RESOURCE_OPTION = "resource";
+	public static final String RESOURCE_TEMPLATE_OPTION = "resourceTemplate";
+	public static final String REMOVE_OPTION = "remove";
+	public static final String SECRET_OPTION = "secret";
+	public static final String SERVERS_OPTION = "servers";
+	public static final String SHARE_OPTION = "share";
+	public static final String TAGS_OPTION = "tags";
+	public static final String URI_OPTION = "uri";
+	
+	private String command;
+	private String secret;
+	private Boolean relay;
+	private Resource resource;
+	private Resource resourceTemplate;
+	private ArrayList<ServerInfo> serverList;
 
 	/**
-	 * default constructor
+	 * Default constructor
 	 */
 	public Command() {
 	}
 
 	/**
-	 * Builds a command based on the clientArgs. Warning it doesn't check for
-	 * the case where two major arguments have been passed. i.e., if a publish
-	 * and query are both present.
+	 * Constructs a command based on the command line arguments (clientArgs). 
+	 * 
+	 * Note: 
+	 * Where two major options are included in the argument (i.e. if publish and 
+	 * query are both present), the method will not return an error, one of the 
+	 * argument will be executed, based on the following order:
+	 * 		public > share > query > fetch > exchange > remove
 	 * 
 	 * @param clientArgs
 	 */
 	public Command(ClientArgs clientArgs) {
-		if (clientArgs.hasOption(Constants.publishOption))
+		if (clientArgs.hasOption(PUBLISH_OPTION))
 			buildPublish(clientArgs);
-		else if (clientArgs.hasOption(Constants.shareOption))
+		else if (clientArgs.hasOption(SHARE_OPTION))
 			buildShare(clientArgs);
-		else if (clientArgs.hasOption(Constants.queryOption))
+		else if (clientArgs.hasOption(QUERY_OPTION))
 			buildQuery(clientArgs);
-		else if (clientArgs.hasOption(Constants.fetchOption))
+		else if (clientArgs.hasOption(FETCH_OPTION))
 			buildFetch(clientArgs);
-		else if (clientArgs.hasOption(Constants.exchangeOption))
+		else if (clientArgs.hasOption(EXCHANGE_OPTION))
 			buildExchange(clientArgs);
-		else if (clientArgs.hasOption(Constants.removeOption))
+		else if (clientArgs.hasOption(REMOVE_OPTION))
 			buildRemove(clientArgs);
 		else
 			buildInvalid(clientArgs);
 	}
 
-	@Override
-	public Command fromJson(String json) {
-		return g.fromJson(json, Command.class);
-	}
+	
 
 	/**
 	 * Builds a query Command given a ClientArgs object. Use case: Command
@@ -56,11 +99,11 @@ public class Command extends JsonModel {
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		// ensure that clientArgs contains a query, otherwise exit
-		if (!clientArgs.hasOption(Constants.queryOption))
+		if (!clientArgs.hasOption(QUERY_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.queryCommand;
-		this.relay = clientArgs.hasOption(Constants.relayOption)
-				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(Constants.relayOption)) : true;
+		this.command = QUERY_COMMAND;
+		this.relay = clientArgs.hasOption(RELAY_OPTION)
+				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(RELAY_OPTION)) : true;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -71,9 +114,9 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildPublish(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(Constants.publishOption))
+		if (!clientArgs.hasOption(PUBLISH_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.publishCommand;
+		this.command = PUBLISH_COMMAND;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
@@ -84,11 +127,11 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(Constants.exchangeOption))
+		if (!clientArgs.hasOption(EXCHANGE_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.exchangeCommand;
+		this.command = EXCHANGE_COMMAND;
 		try {
-			this.addServerList(clientArgs.getOptionValue(Constants.serversOption));
+			this.addServerList(clientArgs.getOptionValue(SERVERS_OPTION));
 		} catch (NumberFormatException e) {
 			System.out.println(e.getClass().getName() + " " + e.getMessage());
 			System.exit(1);
@@ -102,9 +145,9 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(Constants.fetchOption))
+		if (!clientArgs.hasOption(FETCH_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.fetchCommand;
+		this.command = FETCH_COMMAND;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -115,10 +158,10 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(Constants.shareOption))
+		if (!clientArgs.hasOption(SHARE_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.shareCommand;
-		this.secret = clientArgs.getOptionValue(Constants.secretOption);
+		this.command = SHARE_COMMAND;
+		this.secret = clientArgs.getOptionValue(SECRET_OPTION);
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
@@ -129,15 +172,15 @@ public class Command extends JsonModel {
 	 * @return
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(Constants.removeOption))
+		if (!clientArgs.hasOption(REMOVE_OPTION))
 			clientArgs.printArgsHelp("");
-		this.command = Constants.removeCommand;
+		this.command = REMOVE_COMMAND;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
 
 	public Command buildInvalid(ClientArgs clientArgs) {
-		this.command = Constants.invalidCommand;
+		this.command = INVALID_COMMAND;
 		return this;
 	}
 
@@ -163,5 +206,55 @@ public class Command extends JsonModel {
 			// add a new ServerInfo object into the list
 			this.serverList.add(new ServerInfo(host, port));
 		}
+	}
+	
+	public String getCommand(){
+		return command;
+	}
+	
+	
+	public String getSecret() {
+		return secret;
+	}
+
+	public void setSecret(String secret) {
+		this.secret = secret;
+	}
+
+	public Boolean getRelay() {
+		return relay;
+	}
+
+	public void setRelay(Boolean relay) {
+		this.relay = relay;
+	}
+
+	public Resource getResource() {
+		return resource;
+	}
+
+	public void setResource(Resource resource) {
+		this.resource = resource;
+	}
+
+	public Resource getResourceTemplate() {
+		return resourceTemplate;
+	}
+
+	public void setResourceTemplate(Resource resourceTemplate) {
+		this.resourceTemplate = resourceTemplate;
+	}
+
+	public ArrayList<ServerInfo> getServerList() {
+		return serverList;
+	}
+
+	public void setServerList(ArrayList<ServerInfo> serverList) {
+		this.serverList = serverList;
+	}
+
+	@Override
+	public Command fromJson(String json) {
+		return g.fromJson(json, Command.class);
 	}
 }
