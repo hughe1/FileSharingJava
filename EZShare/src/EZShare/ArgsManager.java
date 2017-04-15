@@ -5,17 +5,20 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 
 /**
- * The ArgsManager abstract class is intended to be extended by the ClientArgs and 
- * ServerArgs classes.
- * This abstract class provides the implementation of methods for printing help
- * for an Options descriptor, and for accessing the argument provided for an option.
+ * The ArgsManager abstract class represents a list of arguments parsed against a 
+ * Options descriptor (see org.apache.commons.cli.CommandLine). It is intended to 
+ * be extended by the ClientArgs and ServerArgs classes.
+ * 
+ * The abstract class provides the implementation of methods for printing help
+ * for an Options descriptor, and for retrieving an options's value as specified in
+ * the list of arguments.
  * 
  */
 public abstract class ArgsManager {
 
-	protected Options options = new Options();
-	protected HelpFormatter formatter = new HelpFormatter();
-	protected CommandLine cmd = null;
+	protected static Options options = new Options();
+	protected static HelpFormatter formatter = new HelpFormatter();
+	protected CommandLine cmd;
 
 	/**
 	 * The printArgsHelp method prints the help for all options with usage 
@@ -27,6 +30,7 @@ public abstract class ArgsManager {
 		formatter.printHelp(msg, options, true);
 		System.exit(1);
 	}
+	
 
 	/**
 	 * Wrapper method to access super.cmd. Required if class is used in another
@@ -40,7 +44,7 @@ public abstract class ArgsManager {
 	 */
 	public String getSafeOptionValue(String option) {
 		if (!cmd.hasOption(option)) {
-			this.printArgsHelp("Options not correct\n");
+			printArgsHelp("Options not correct\n");
 		}
 		// return value if exists, otherwise null
 		return cmd.getOptionValue(option);
@@ -56,6 +60,21 @@ public abstract class ArgsManager {
 	 */
 	public String getOptionValue(String option) {
 		return cmd.getOptionValue(option);
+	}
+
+	
+	/**
+	 * Wrapper method to access super.cmd. Required if class is used in an
+	 * external package.
+	 * 
+	 * @param option
+	 *            is the name of the option to look for
+	 * @param defaultValue
+	 *        		is the default value for the option to look for
+	 * @return a String of the value if present, otherwise returns the default value.
+	 */
+	public String getOptionValue(String option, String defaultValue) {
+		return cmd.getOptionValue(option, defaultValue);
 	}
 
 	/**

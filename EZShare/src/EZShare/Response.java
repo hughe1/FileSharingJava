@@ -3,7 +3,7 @@ package EZShare;
  * The Response class represents a message that may be sent by a server.
  * 
  * Only three formats of response message are possible - success, error or result-size.
- * Fields can only be populated using the setter methods to ensure correct formating.
+ * Fields can only be populated using the setter methods to ensure correct formatting.
  * 
  * Note:
  * Upon construction, all fields are set to null. Null fields are NOT part of the 

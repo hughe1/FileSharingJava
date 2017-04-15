@@ -3,22 +3,32 @@ package EZShare;
 import java.util.ArrayList;
 
 /**
- * The class models the Resource json object as specified in the assignment. the
- * class implements hashCode and equals so that objects can be easily hashed 
- * when comparing against other Resource objects. Here the tuple (channel,uri) is used as a PrimaryKey to identify the object.
+ * The Resource class represents the record of a resource OR a resource template 
+ * which may be sent to a server.
+ * 
+ * The class implements hashCode and equals so that objects can be easily hashed 
+ * and compared against other Resource objects - the tuple (channel, uri) is used 
+ * as the PrimaryKey to identify a Resource object.
  */
 
 public class Resource extends JsonModel{
-	public static final String DEFAULT_STRING = "";
-			
-	public String name;
-	public ArrayList<String> tags;
-	public String description;
-	public String uri; // use URI class here
-	public String channel;
-	public String owner;
-	public String ezserver;
-	public Long resourceSize;
+	
+	//Default values specified for optional fields in a resource template
+	public static final String DEFAULT_NAME = "";
+	public static final String DEFAULT_DESCRIPTION = "";
+	public static final String DEFAULT_CHANNEL = "";
+	public static final String DEFAULT_OWNER = "";
+	public static final String DEFAULT_EZSERVER = ""; //TODO see below
+	public static final String DEFAULT_URI = "";
+	
+	private String name;
+	private ArrayList<String> tags;
+	private String description;
+	private String uri; // use URI class here
+	private String channel;
+	private String owner;
+	private String ezserver;
+	private Long resourceSize;
 
 	/**
 	 * Default constructor
@@ -28,31 +38,114 @@ public class Resource extends JsonModel{
 	}
 
 	/**
-	 * Convenient constructor for Client that will make a resource based on the
-	 * user inputs.
+	 * Initialize a Resource object based on the client arguments - if an option is
+	 * optional and not set in the client argument, the default value for that option
+	 * is used in the construction.
 	 * 
 	 * @param clientArgs
+	 * 				a list of client arguments parsed against EZShare server commands/
+	 * 				options
 	 */
 	public Resource(ClientArgs clientArgs) {
-		String name = clientArgs.getOptionValue(Command.NAME_OPTION);		
-		this.name = name == null ? DEFAULT_STRING : name;
+		name = clientArgs.getOptionValue(ClientArgs.NAME_OPTION, DEFAULT_NAME);
+		
+		addTags(clientArgs.getOptionValue(ClientArgs.TAGS_OPTION));
+		
+		description = clientArgs.getOptionValue(ClientArgs.DESCRIPTION_OPTION, DEFAULT_DESCRIPTION);
+		
+		uri = clientArgs.getOptionValue(ClientArgs.URI_OPTION, DEFAULT_URI);	
+		
+		channel = clientArgs.getOptionValue(ClientArgs.CHANNEL_OPTION, DEFAULT_CHANNEL);		
+		
+		owner = clientArgs.getOptionValue(ClientArgs.OWNER_OPTION, DEFAULT_OWNER);	
+		
+		//TODO AZ the default server is not an empty string, but actually null!
+		//need to enable parsing null fields when converting resource object to JSON!
+		ezserver = clientArgs.getOptionValue(ClientArgs.EZSERVER_OPTION, DEFAULT_EZSERVER);
+	}
 
-		this.addTags(clientArgs.getOptionValue(Command.TAGS_OPTION));
+	/**
+	 * The addTags method adds all comma-delimited tags in the input string
+	 * to the calling Resource object's tags list.
+	 * 
+	 * @param tags_string
+	 *            a string of the form "tag1,tag2,tag3,..."
+	 */
+	public void addTags(String tags_string) {
+		tags = new ArrayList<String>();
 		
-		String description = clientArgs.getOptionValue(Command.DESCRIPTION_OPTION);		
-		this.description = description == null ? DEFAULT_STRING : description;
+		//return default empty list if the tag option is simply not set
+		if (tags == null)
+			return;
 		
-		String uri = clientArgs.getOptionValue(Command.URI_OPTION);		
-		this.uri = uri == null ? DEFAULT_STRING : uri;
+		//add each tag delimited by "," to the tags list
+		String[] tokens = tags_string.split(",");
+		for (String token : tokens) {
+			this.tags.add(token);
+		}
+	}
+	/**
+	 * The hasURI method checks if the object is has an URI
+	 * 
+	 * @return true if the calling object has a URI
+	 */
+	public boolean hasURI(){
+		return uri == null || uri.isEmpty();
+	}
+	
+	/*
+	 * Getters for accessing instance variables
+	 */
+	public String getName() {
+		return name;
+	}
+
+	public ArrayList<String> getTags() {
+		return tags;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public String getURI() {
+		return uri;
+	}
+
+	public String getChannel() {
+		return channel;
+	}
+
+	public String getOwner() {
+		return owner;
+	}
+
+	public String getEzserver() {
+		return ezserver;
+	}
+	
+	public Long getResourceSize() {
+		return resourceSize;
+	}
+
+
+	/*
+	 * Setters used by Server to alter isntance variable's values
+	 */
+	public void setOwner(String owner) {
+		this.owner = owner;
+	}
+	
+	public void setChannel(String channel) {
+		this.channel = channel;
 		
-		String channel = clientArgs.getOptionValue(Command.CHANNEL_OPTION);		
-		this.channel = channel == null ? DEFAULT_STRING : channel;
-		
-		String owner = clientArgs.getOptionValue(Command.OWNER_OPTION);		
-		this.owner = owner == null ? DEFAULT_STRING : owner;
-		
-		String ezserver = clientArgs.getOptionValue(Command.EZSERVER_OPTION);		
-		this.ezserver = ezserver == null ? DEFAULT_STRING : ezserver;
+	}
+	public void setEzserver(String ezserver) {
+		this.ezserver = ezserver;
+	}
+	
+	public void setResourceSize(Long resourceSize) {
+		this.resourceSize = resourceSize;
 	}
 
 	
@@ -64,10 +157,10 @@ public class Resource extends JsonModel{
 	
 	@Override
 	public int hashCode() {
-		final int prime = 31;
+		final int PRIME = 31;
 		int result = 1;
-		result = prime * result + ((channel == null) ? 0 : channel.hashCode());
-		result = prime * result + ((uri == null) ? 0 : uri.hashCode());
+		result = PRIME * result + ((channel == null) ? 0 : channel.hashCode());
+		result = PRIME * result + ((uri == null) ? 0 : uri.hashCode());
 		return result;
 	}
 	
@@ -99,34 +192,21 @@ public class Resource extends JsonModel{
 		return true;
 	}
 
+	
 	/**
-	 * This method spits tags with delimiter "," and loops through each
-	 * resulting token and adds it to the tags list if tokens exist.
-	 * 
-	 * @param tags
-	 *            has the form tag1,tag2,tag3,...
-	 */
-	public void addTags(String tags) {
-		this.tags = new ArrayList<String>();
-		if (tags == null)
-			return;
-		String[] tokens = tags.split(",");
-		for (String token : tokens) {
-			this.tags.add(token);
-		}
-	}
-
-	/**
-	 * Convenience method for Server. Can call this to easily compare incoming
-	 * resource objects from client.
+	 * The getSafeOwner method is used to obtain the owner from an incoming
+	 * Resource objects (i.e. converted by fromJson method, where owner may
+	 * be null).
 	 * 
 	 * @return "" if owner is null, otherwise return the owner
 	 */
 	public String getSafeOwner() {
 		if (this.owner == null)
-			return DEFAULT_STRING;
+			return DEFAULT_OWNER;
 		else
 			return this.owner;
 	}
+
+	
 
 }

@@ -39,7 +39,7 @@ public class Client {
 
 
 		// Configure logger
-		if (client.clientArgs.hasOption(Command.DEBUG_OPTION)) {
+		if (client.clientArgs.hasOption(ClientArgs.DEBUG_OPTION)) {
 			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");

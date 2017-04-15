@@ -3,11 +3,17 @@ package EZShare;
 import java.util.ArrayList;
 
 /**
- * The Command class represents message that may be sent to a server.
+ * The Command class represents commands that may be sent from an EZShare client to 
+ * an EZShare server.
+ * 
+ * Only seven formats of commands are constructible (including one invalid format): 
+ * 	QUERY, PUBLISH, FETCH, EXCHANGE, SHARE, REMOVE, INVALID.
+ * 
+ * Fields can only be initialize using the build methods to ensure correct formatting.
  * 
  * Note:
- * Null fields are NOT part of the message and will be disregarded when converting 
- * to JSON.
+ * Upon construction, all fields are set to null. Null fields are NOT part of the 
+ * command and will be disregarded when converting to JSON for communication.
  */
 public class Command extends JsonModel {
 	
@@ -18,33 +24,11 @@ public class Command extends JsonModel {
 	public static final String EXCHANGE_COMMAND = "EXCHANGE";
 	public static final String SHARE_COMMAND = "SHARE";
 	public static final String REMOVE_COMMAND = "REMOVE";
-	public static final String INVALID_COMMAND = "INVALID";
+	
+	public static final String INVALID_COMMAND = "INVALID"; //TODO: AZ - I think the client should simply reject this from the get go
 
-	/* Defined command options recognized by the server */
-	public static final String ADVERTISED_HOST_NAME_OPTION = "advertisedhostname";
-	public static final String CHANNEL_OPTION = "channel";
-	public static final String CONNECTION_INTERVAL_LIMIT_OPTION = "connectionintervallimit";
-	public static final String DEBUG_OPTION = "debug";
-	public static final String DESCRIPTION_OPTION = "description";
-	public static final String EXCHANGE_OPTION = "exchange";
-	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeInterval";
-	public static final String EZSERVER_OPTION = "ezserver";
-	public static final String FETCH_OPTION = "fetch";
-	public static final String HOST_OPTION = "host";
-	public static final String NAME_OPTION = "name";
-	public static final String OWNER_OPTION = "owner";
-	public static final String PORT_OPTION = "port";
-	public static final String PUBLISH_OPTION = "publish";
-	public static final String QUERY_OPTION = "query";
-	public static final String RELAY_OPTION = "relay";
 	public static final String RESOURCE_OPTION = "resource";
 	public static final String RESOURCE_TEMPLATE_OPTION = "resourceTemplate";
-	public static final String REMOVE_OPTION = "remove";
-	public static final String SECRET_OPTION = "secret";
-	public static final String SERVERS_OPTION = "servers";
-	public static final String SHARE_OPTION = "share";
-	public static final String TAGS_OPTION = "tags";
-	public static final String URI_OPTION = "uri";
 	
 	private String command;
 	private String secret;
@@ -52,15 +36,16 @@ public class Command extends JsonModel {
 	private Resource resource;
 	private Resource resourceTemplate;
 	private ArrayList<ServerInfo> serverList;
-
+	
 	/**
 	 * Default constructor
 	 */
 	public Command() {
 	}
 
+	//TODO AZ - probably should do something about that multiple command arguments scenario...
 	/**
-	 * Constructs a command based on the command line arguments (clientArgs). 
+	 * Constructs a Command object based on the command line arguments (clientArgs). 
 	 * 
 	 * Note: 
 	 * Where two major options are included in the argument (i.e. if publish and 
@@ -71,27 +56,26 @@ public class Command extends JsonModel {
 	 * @param clientArgs
 	 */
 	public Command(ClientArgs clientArgs) {
-		if (clientArgs.hasOption(PUBLISH_OPTION))
+		if (clientArgs.hasOption(ClientArgs.PUBLISH_OPTION))
 			buildPublish(clientArgs);
-		else if (clientArgs.hasOption(SHARE_OPTION))
+		else if (clientArgs.hasOption(ClientArgs.SHARE_OPTION))
 			buildShare(clientArgs);
-		else if (clientArgs.hasOption(QUERY_OPTION))
+		else if (clientArgs.hasOption(ClientArgs.QUERY_OPTION))
 			buildQuery(clientArgs);
-		else if (clientArgs.hasOption(FETCH_OPTION))
+		else if (clientArgs.hasOption(ClientArgs.FETCH_OPTION))
 			buildFetch(clientArgs);
-		else if (clientArgs.hasOption(EXCHANGE_OPTION))
+		else if (clientArgs.hasOption(ClientArgs.EXCHANGE_OPTION))
 			buildExchange(clientArgs);
-		else if (clientArgs.hasOption(REMOVE_OPTION))
+		else if (clientArgs.hasOption(ClientArgs.REMOVE_OPTION))
 			buildRemove(clientArgs);
 		else
 			buildInvalid(clientArgs);
 	}
 
-	
 
 	/**
-	 * Builds a query Command given a ClientArgs object. Use case: Command
-	 * command = new Command().buildQuery(...);
+	 * Builds a query Command given a ClientArgs object. Only options relevant
+	 * t
 	 * 
 	 * @param cmd
 	 *            contains input from the user.
@@ -99,11 +83,11 @@ public class Command extends JsonModel {
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		// ensure that clientArgs contains a query, otherwise exit
-		if (!clientArgs.hasOption(QUERY_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.QUERY_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = QUERY_COMMAND;
-		this.relay = clientArgs.hasOption(RELAY_OPTION)
-				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(RELAY_OPTION)) : true;
+		this.relay = clientArgs.hasOption(ClientArgs.RELAY_OPTION)
+				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(ClientArgs.RELAY_OPTION)) : true;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
@@ -114,7 +98,7 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildPublish(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(PUBLISH_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.PUBLISH_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = PUBLISH_COMMAND;
 		this.resource = new Resource(clientArgs);
@@ -127,11 +111,11 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(EXCHANGE_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.EXCHANGE_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = EXCHANGE_COMMAND;
 		try {
-			this.addServerList(clientArgs.getOptionValue(SERVERS_OPTION));
+			this.addServerList(clientArgs.getOptionValue(ClientArgs.SERVERS_OPTION));
 		} catch (NumberFormatException e) {
 			System.out.println(e.getClass().getName() + " " + e.getMessage());
 			System.exit(1);
@@ -145,7 +129,7 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(FETCH_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.FETCH_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = FETCH_COMMAND;
 		this.resourceTemplate = new Resource(clientArgs);
@@ -158,10 +142,10 @@ public class Command extends JsonModel {
 	 * @return self
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(SHARE_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.SHARE_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = SHARE_COMMAND;
-		this.secret = clientArgs.getOptionValue(SECRET_OPTION);
+		this.secret = clientArgs.getOptionValue(ClientArgs.SECRET_OPTION);
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
@@ -172,7 +156,7 @@ public class Command extends JsonModel {
 	 * @return
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(REMOVE_OPTION))
+		if (!clientArgs.hasOption(ClientArgs.REMOVE_OPTION))
 			clientArgs.printArgsHelp("");
 		this.command = REMOVE_COMMAND;
 		this.resource = new Resource(clientArgs);
@@ -208,6 +192,7 @@ public class Command extends JsonModel {
 		}
 	}
 	
+	/* Getters and Setters for accessing instance variables */
 	public String getCommand(){
 		return command;
 	}
