@@ -198,9 +198,11 @@ public class Server {
 		// with whitespace."
 		// "The field must not be the single character "*"."
 		// TODO Check if every possible case is covered
+		
 		boolean errorFound = false;
 
 		ArrayList<String> stringValues = new ArrayList<>();
+		
 		stringValues.add(command.getSecret());
 		if (command.getResource() != null) {
 			String[] strings = { command.getResource().getName(), command.getResource().getDescription(), command.getResource().getURI(),

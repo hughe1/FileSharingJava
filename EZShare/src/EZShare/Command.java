@@ -6,8 +6,8 @@ import java.util.ArrayList;
  * The Command class represents commands that may be sent from an EZShare client to 
  * an EZShare server.
  * 
- * Only seven formats of commands are constructible (including one invalid format): 
- * 	QUERY, PUBLISH, FETCH, EXCHANGE, SHARE, REMOVE, INVALID.
+ * Only seven formats of commands are constructible (including invalid for testing): 
+ * 		QUERY, PUBLISH, FETCH, EXCHANGE, SHARE, REMOVE, INVALID.
  * 
  * Fields can only be initialize using the build methods to ensure correct formatting.
  * 
@@ -43,107 +43,110 @@ public class Command extends JsonModel {
 	public Command() {
 	}
 
-	//TODO AZ - probably should do something about that multiple command arguments scenario...
 	/**
 	 * Constructs a Command object based on the command line arguments (clientArgs). 
 	 * 
 	 * Note: 
-	 * Where two major options are included in the argument (i.e. if publish and 
-	 * query are both present), the method will not return an error, one of the 
-	 * argument will be executed, based on the following order:
-	 * 		public > share > query > fetch > exchange > remove
+	 * If less or more than one server command options are included in the 
+	 * client arguments (i.e. if publish and query are both present), an INVALID 
+	 * Command object will be constructed.
 	 * 
 	 * @param clientArgs
 	 */
 	public Command(ClientArgs clientArgs) {
-		if (clientArgs.hasOption(ClientArgs.PUBLISH_OPTION))
+		switch (clientArgs.getCommandOption().toUpperCase()) {
+		case PUBLISH_COMMAND:
 			buildPublish(clientArgs);
-		else if (clientArgs.hasOption(ClientArgs.SHARE_OPTION))
+			break;
+		case SHARE_COMMAND:
 			buildShare(clientArgs);
-		else if (clientArgs.hasOption(ClientArgs.QUERY_OPTION))
+			break;
+		case QUERY_COMMAND:
 			buildQuery(clientArgs);
-		else if (clientArgs.hasOption(ClientArgs.FETCH_OPTION))
+			break;
+		case FETCH_COMMAND:
 			buildFetch(clientArgs);
-		else if (clientArgs.hasOption(ClientArgs.EXCHANGE_OPTION))
+			break;
+		case EXCHANGE_COMMAND:
 			buildExchange(clientArgs);
-		else if (clientArgs.hasOption(ClientArgs.REMOVE_OPTION))
+			break;
+		case REMOVE_COMMAND:
 			buildRemove(clientArgs);
-		else
+			break;
+		default:
+			//No valid command option or multiple commands found
 			buildInvalid(clientArgs);
+			break;
+		}
 	}
 
 
 	/**
-	 * Builds a query Command given a ClientArgs object. Only options relevant
-	 * t
+	 * Builds a query Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
-	 * @param cmd
-	 *            contains input from the user.
-	 * @return new ClientArgs object modelling the user input.
+	 * @param clientArgs
+	 * @return a Command object corresponding the the query options provided.
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
-		// ensure that clientArgs contains a query, otherwise exit
-		if (!clientArgs.hasOption(ClientArgs.QUERY_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = QUERY_COMMAND;
-		this.relay = clientArgs.hasOption(ClientArgs.RELAY_OPTION)
-				? java.lang.Boolean.parseBoolean(clientArgs.getOptionValue(ClientArgs.RELAY_OPTION)) : true;
+		this.relay = true; //all client initiated queries have relay set to true
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
 
 	/**
+	 * Builds a publish Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return self
+	 * @return a Command object corresponding the the publish options provided.
 	 */
 	public Command buildPublish(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(ClientArgs.PUBLISH_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = PUBLISH_COMMAND;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
 
 	/**
+	 * Builds an exchange Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return self
+	 * @return a Command object corresponding the the exchange options provided.
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(ClientArgs.EXCHANGE_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = EXCHANGE_COMMAND;
 		try {
 			this.addServerList(clientArgs.getOptionValue(ClientArgs.SERVERS_OPTION));
 		} catch (NumberFormatException e) {
-			System.out.println(e.getClass().getName() + " " + e.getMessage());
-			System.exit(1);
+			// server list in the client arguments is of the wrong format
+			clientArgs.printArgsHelp("servers options have the wrong format");
 		}
 		return this;
 	}
 
 	/**
+	 * Builds a fetch Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return self
+	 * @return a Command object corresponding the the fetch options provided.
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(ClientArgs.FETCH_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = FETCH_COMMAND;
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
 
 	/**
+	 * Builds a share Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return self
+	 * @return a Command object corresponding the the share options provided.
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(ClientArgs.SHARE_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = SHARE_COMMAND;
 		this.secret = clientArgs.getOptionValue(ClientArgs.SECRET_OPTION);
 		this.resource = new Resource(clientArgs);
@@ -151,29 +154,37 @@ public class Command extends JsonModel {
 	}
 
 	/**
+	 * Builds a remove Command based on the arguments in a given a ClientArgs object. 
+	 * Only fields relevant to the command are set according to the client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return
+	 * @return a Command object corresponding the the remove options provided.
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
-		if (!clientArgs.hasOption(ClientArgs.REMOVE_OPTION))
-			clientArgs.printArgsHelp("");
 		this.command = REMOVE_COMMAND;
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
-
+	
+	/**
+	 * Builds an invalid Command (mostly for testing purpose). Client can simply
+	 * return an error instead, if needed.
+	 * 
+	 * @param clientArgs
+	 * @return a Command object that will generate a command is invalid response from
+	 * the server.
+	 */
 	public Command buildInvalid(ClientArgs clientArgs) {
 		this.command = INVALID_COMMAND;
 		return this;
 	}
 
 	/**
-	 * Convenient method to parse and add details about a server. Usual use case
-	 * is for building a SHARE command.
+	 * The addServerList is helper method to parse and add details about a server
+	 * to the serverList. Normally used when building a SHARE command.
 	 * 
 	 * @param str
-	 *            has form host:port,host:port,...
+	 *            has the form host:port,host:port,...
 	 */
 	public void addServerList(String str) throws NumberFormatException {
 		if (str == null)
@@ -196,8 +207,7 @@ public class Command extends JsonModel {
 	public String getCommand(){
 		return command;
 	}
-	
-	
+		
 	public String getSecret() {
 		return secret;
 	}

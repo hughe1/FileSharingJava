@@ -3,13 +3,23 @@ package EZShare;
 import java.util.ArrayList;
 
 /**
- * The Resource class represents the record of a resource OR a resource template 
- * which may be sent to a server.
+ * The Resource class represents the record of:
+ * 1. a resource stored by the Server;
+ * 2. a resource sent to a server as part of a PUBLISH/REMOVE/SHARE command;
+ * 3. a resource template sent to a server as part of a QUERY command;
+ * 4. a resource response sent by a server in reply to a QUERY command;
  * 
  * The class implements hashCode and equals so that objects can be easily hashed 
  * and compared against other Resource objects - the tuple (channel, uri) is used 
  * as the PrimaryKey to identify a Resource object.
+ * 
+ * Note:
+ * resourceSize is only set for a resource response. Where resourceSize is null,
+ * it will be disregarded when converting to JSON for communication.
  */
+
+//TODO AZ: the class seems to be doing too much, maybe resource response and template
+//be split off into their own subclass with methods that handles look-up and copying
 
 public class Resource extends JsonModel{
 	
@@ -61,6 +71,7 @@ public class Resource extends JsonModel{
 		
 		//TODO AZ the default server is not an empty string, but actually null!
 		//need to enable parsing null fields when converting resource object to JSON!
+		//without breaking resourceSize at the same time (this should be ignored)
 		ezserver = clientArgs.getOptionValue(ClientArgs.EZSERVER_OPTION, DEFAULT_EZSERVER);
 	}
 
@@ -75,7 +86,7 @@ public class Resource extends JsonModel{
 		tags = new ArrayList<String>();
 		
 		//return default empty list if the tag option is simply not set
-		if (tags == null)
+		if (tags_string == null)
 			return;
 		
 		//add each tag delimited by "," to the tags list
@@ -130,7 +141,7 @@ public class Resource extends JsonModel{
 
 
 	/*
-	 * Setters used by Server to alter isntance variable's values
+	 * Setters used by Server to alter a Resource object's fields
 	 */
 	public void setOwner(String owner) {
 		this.owner = owner;
@@ -149,6 +160,10 @@ public class Resource extends JsonModel{
 	}
 
 	
+	public boolean isValidResourceResponse() {
+		return ezserver != null && uri != null; //TODO AZ:validity check on uri
+	}
+		
 	@Override
 	public Resource fromJson(String json) {
 		return g.fromJson(json, Resource.class);
@@ -201,12 +216,10 @@ public class Resource extends JsonModel{
 	 * @return "" if owner is null, otherwise return the owner
 	 */
 	public String getSafeOwner() {
-		if (this.owner == null)
+		if (owner == null)
 			return DEFAULT_OWNER;
 		else
-			return this.owner;
+			return owner;
 	}
-
-	
 
 }

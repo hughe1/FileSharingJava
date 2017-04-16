@@ -10,8 +10,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * The ClientArgs class represents a list of command line arguments parsed against 
- * an Option descriptor containing the commands and options known to an EZShare server.
+ * The ClientArgs class represents a list of command-line arguments parsed against 
+ * an Option descriptor containing the commands/options known to an EZShare client.
  */
 public class ClientArgs extends ArgsManager {
 
@@ -26,7 +26,6 @@ public class ClientArgs extends ArgsManager {
 	public static final String PORT_OPTION = "port";
 	public static final String PUBLISH_OPTION = "publish";
 	public static final String QUERY_OPTION = "query";
-	public static final String RELAY_OPTION = "relay";
 	public static final String URI_OPTION = "uri";
 	public static final String SECRET_OPTION = "secret";
 	public static final String TAGS_OPTION = "tags";
@@ -36,38 +35,14 @@ public class ClientArgs extends ArgsManager {
 	public static final String EXCHANGE_OPTION = "exchange";
 	public static final String FETCH_OPTION = "fetch";
 
+	public static final Integer DEFAULT_PORT = 3780;
+	
 	/**
-	 * Constructor which initializes the Option descriptor with EZShare server 
-	 * command/options and parse the command line string against the descriptor
-	 * to intialize the .
-	 * @param args
+	 * The static initializer adds all commands/options known to an EZShare client 
+	 * to the class' Option descriptor.
 	 */
-	public ClientArgs(String[] args) {
-		
-		//initialize the Options descriptor
-		initializeClientOptions();
-		
-		//Try to parse the command line arguments string against known options
-		try {
-			this.cmd = new DefaultParser().parse(options, args);
-			
-			// check if at least one argument was provided
-			if (args.length == 0)
-				throw new ParseException("Zero arguments supplied");
-		
-		} catch (ParseException e) {
-			//unknown or no commands/options provided
-			System.out.println(e.getMessage());
-			this.printArgsHelp("Client"); //print Client help menu and exit
-		}
-	}
-
-	/**
-	 * The intializeEZShareOptions method adds all commands/options known to an 
-	 * EZShare client to the object's Option descriptor.
-	 */
-	public void initializeClientOptions(){
-		//static variable inherited from ArgsManager, requires one-time initialization
+	static {
+		//"options" is static, thus requires one-time initialization
 		if (options.getOptions().isEmpty()) {
 			options.addOption(CHANNEL_OPTION, true, "channel");
 			options.addOption(DEBUG_OPTION, false, "print debug information");
@@ -86,25 +61,91 @@ public class ClientArgs extends ArgsManager {
 			options.addOption(SHARE_OPTION, false, "share resource on server");
 			options.addOption(TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
 			options.addOption(URI_OPTION, true, "resource URI");
-			options.addOption(RELAY_OPTION, true, "relay Query");
 		}
 	}
 	
+	/**
+	 * Constructor that parses the command-line arguments against the client 
+	 * commands descriptor to initialize the object's CommandLine variable (cmd).
+	 * @param args
+	 */
+	public ClientArgs(String[] args) {		
+		//Try to parse the command line arguments string against known options
+		try {
+			cmd = new DefaultParser().parse(options, args);
+			
+		} catch (ParseException e) {
+			//unknown or no commands/options provided
+			System.out.println(e.getMessage());
+			this.printArgsHelp("Client"); //print Client help menu and exit
+		}
+	}
 	
 	/**
-	 * 
-	 * @return
+	 * The getCommandOption method returns the server command (i.e. publish, share, 
+	 * query, fetch, exchange, remove) that is set by the client arguments. 
+	 * If more than one command option is set, "INVALID" will be returned.
+	 * @return the server command option set in the calling CliengArgs object. 
+	 * If more than one command option is used, "INVALID" will be returned.
+	 */
+	public String getCommandOption(){
+		int num_command = 0;
+		String command = "INVALID";
+		
+		if(hasOption(PUBLISH_OPTION)){
+			num_command++;
+			command = PUBLISH_OPTION;
+		}
+		
+		if(hasOption(SHARE_OPTION)){
+			num_command++;
+			command = SHARE_OPTION;
+		}
+		
+		if(hasOption(QUERY_OPTION)){
+			num_command++;
+			command = QUERY_OPTION;
+		}
+		
+		if(hasOption(FETCH_OPTION)){
+			num_command++;
+			command = FETCH_OPTION;
+		}
+		
+		if(hasOption(EXCHANGE_OPTION)){
+			num_command++;
+			command = EXCHANGE_OPTION;
+		}
+		
+		if(hasOption(REMOVE_OPTION)){
+			num_command++;
+			command = REMOVE_OPTION;
+		}
+		
+		//final check on multiple command options
+		if(num_command > 1) {
+			command = "INVALID";
+		}
+		return command;
+	}
+
+	/**
+	 * The getSafePort method returns the server port specified in the command-line
+	 * arguments
+	 * @return the server port specified in the client arguments, if a port was not
+	 * specified, the default port is returned
 	 */
 	public Integer getSafePort() {
 		if (!this.hasOption(PORT_OPTION)) {
-			return 3780; // default port
+			return DEFAULT_PORT; // default port
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
 	}
 
 	/**
-	 * 
-	 * @return
+	 * The getSafeHost method returns the server host specified in the command-line
+	 * arguments
+	 * @return the server host specified in the client arguments, 
 	 */
 	public String getSafeHost() {
 		if (!this.hasOption(HOST_OPTION)) {
@@ -114,8 +155,8 @@ public class ClientArgs extends ArgsManager {
 			} catch (UnknownHostException e) {
 				Logger logger = LogManager.getRootLogger();
 				logger.error(e.getClass().getName() + " " + e.getMessage());
+				return "localhost"; // default if failed to retrieve OS host name
 			} 
-			return "localhost"; // default host
 		}
 		return this.getOptionValue(HOST_OPTION);
 	}

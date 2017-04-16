@@ -59,6 +59,14 @@ public class Response extends JsonModel {
 		return response.equals(SUCCESS_TEXT);
 	}
 	
+	/**
+	 * Check if the response is a resultSize response.
+	 * @return true if the response is a resultSize response.
+	 */
+	public boolean isResultSize(){
+		return resultSize != null;
+	}
+	
 	@Override
 	public Response fromJson(String json) {
 		return g.fromJson(json, Response.class);

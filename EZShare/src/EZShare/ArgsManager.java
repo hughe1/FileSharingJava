@@ -31,7 +31,9 @@ public abstract class ArgsManager {
 		System.exit(1);
 	}
 	
-
+	
+	//TODO AZ: @Bobby I'm not sure about these method comments, could you confirm,
+	//not sure why protected access is preferred since there's no package issue
 	/**
 	 * Wrapper method to access super.cmd. Required if class is used in another
 	 * package. i.e. super.cmd has protected access. This method expects the
