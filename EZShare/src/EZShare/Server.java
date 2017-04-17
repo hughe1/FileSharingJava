@@ -481,7 +481,7 @@ public class Server {
 					try {
 						URI uri = new URI(resource.getURI());
 						File file = new File(uri);
-						long length = file.length();
+						int length = (int) file.length();
 						
 						//TODO setter for resource size
 						resource.setResourceSize(length);

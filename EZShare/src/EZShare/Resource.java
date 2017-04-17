@@ -38,7 +38,7 @@ public class Resource extends JsonModel{
 	private String channel;
 	private String owner;
 	private String ezserver;
-	private Long resourceSize;
+	private int resourceSize;
 
 	/**
 	 * Default constructor
@@ -135,7 +135,7 @@ public class Resource extends JsonModel{
 		return ezserver;
 	}
 	
-	public Long getResourceSize() {
+	public int getResourceSize() {
 		return resourceSize;
 	}
 
@@ -155,7 +155,7 @@ public class Resource extends JsonModel{
 		this.ezserver = ezserver;
 	}
 	
-	public void setResourceSize(Long resourceSize) {
+	public void setResourceSize(int resourceSize) {
 		this.resourceSize = resourceSize;
 	}
 
