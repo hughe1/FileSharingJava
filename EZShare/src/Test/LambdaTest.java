@@ -1,9 +1,5 @@
 package Test;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import EZShare.Command;
 import EZShare.Resource;
 

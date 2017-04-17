@@ -7,19 +7,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-
-import java.net.InetAddress;
 import java.net.ServerSocket;
-import javax.net.ServerSocketFactory;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -27,23 +22,30 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 
+import javax.net.ServerSocketFactory;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Server {
-	public static final int TIME_OUT_LIMIT = 5000;
-	
+
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
-		
+	public static final int TIME_OUT_LIMIT = 5000;
 	private static Logger logger;
-	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
+	private Response successResponse;
 
 	public static void main(String[] args) {
+		// TODO: Remove if -- solely for testing purposes
+		if (args.length == 0) {
+			String[] args2 = { "-" + Constants.debugOption };
+			args = args2;
+		}
+
 		Server server = new Server(args);
 
-		if (server.serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
+		if (server.serverArgs.hasOption(Constants.debugOption)) {
 			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
 		} else {
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
@@ -72,13 +74,13 @@ public class Server {
 	 * @return Command object encapsulating the arguments provided
 	 */
 	public Command parseCommand() {
-		if (serverArgs.cmd.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
+		if (serverArgs.cmd.hasOption(Constants.advertisedHostNameOption)) {
 			logger.debug("Advertised hostname command found");
 		}
-		if (serverArgs.cmd.hasOption(ServerArgs.PORT_OPTION)) {
+		if (serverArgs.cmd.hasOption(Constants.portOption)) {
 			logger.debug("Port command found");
 		}
-		if (serverArgs.cmd.hasOption(ServerArgs.SECRET_OPTION)) {
+		if (serverArgs.cmd.hasOption(Constants.secretOption)) {
 			logger.debug("Secret command found");
 		}
 
@@ -92,6 +94,7 @@ public class Server {
 	 * 
 	 */
 	public void listen() {
+		// TODO: Implement blocking until client request
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
 
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
@@ -103,36 +106,21 @@ public class Server {
 			Timer timer = new Timer();
 			timer.schedule(new ExchangeJob(), 0, this.serverArgs.getSafeExchangeInterval() * 1000);
 
-			int limit = this.serverArgs.getSafeConnectionInterval();
-
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
 				logger.info("Received request");
 
-				// "The server will ensure that the time between successive
-				// connections from any IP address will be no less than a limit
-				// (1 second by default but configurable on the command line)."
-				Long timestamp = this.clientAccesses.get(client.getInetAddress());
-				Long currentTime = System.currentTimeMillis();
-				if (timestamp != null && ((limit * 1000) + timestamp >= currentTime)) {
-					// "An incomming [sic] request that violates this rule will
-					// be closed immediately with no response."
-					logger.info("Same client sent request less than " + limit + " second(s) ago. Closed client.");
-					client.close();
-				} else {
-					// TODO: replace this with a call to a class that will serve
-					// client
-					// i.e., implement a runnable class
-					// lambda expression
-					Thread t = new Thread(() -> this.serveClient(client));
-					t.start();
-				}
-				// Record client access
-				this.clientAccesses.put(client.getInetAddress(), currentTime);
+				// TODO: replace this with a call to a class that will serve
+				// client
+				// i.e., implement a runnable class
+				// lambda expression
+				Thread t = new Thread(() -> this.serveClient(client));
+				t.start();
 			}
 
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 			e.printStackTrace();
 		}
@@ -155,27 +143,27 @@ public class Server {
 
 			if (!parseCommandForErrors(command, output)) {
 
-				switch (command.getCommand()) {
-				case Command.QUERY_COMMAND:
+				switch (command.command) {
+				case Constants.queryCommand:
 					processQueryCommand(command, output);
 					break;
-				case Command.FETCH_COMMAND:
+				case Constants.fetchCommand:
 					processFetchCommand(command, output);
 					break;
-				case Command.EXCHANGE_COMMAND:
+				case Constants.exchangeCommand:
 					processExchangeCommand(command, output,
 							new ServerInfo(client.getInetAddress().getHostName(), client.getPort()));
 					break;
-				case Command.PUBLISH_COMMAND:
+				case Constants.publishCommand:
 					processPublishCommand(command, output);
 					break;
-				case Command.SHARE_COMMAND:
+				case Constants.shareCommand:
 					processShareCommand(command, output);
 					break;
-				case Command.REMOVE_COMMAND:
+				case Constants.removeCommand:
 					processRemoveCommand(command, output);
 					break;
-				case Command.INVALID_COMMAND:
+				case Constants.invalidCommand:
 					processInvalidCommand(command, output);
 					break;
 				default:
@@ -189,6 +177,7 @@ public class Server {
 		} catch (SocketTimeoutException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 	}
@@ -198,27 +187,25 @@ public class Server {
 		// with whitespace."
 		// "The field must not be the single character "*"."
 		// TODO Check if every possible case is covered
-		
 		boolean errorFound = false;
 
 		ArrayList<String> stringValues = new ArrayList<>();
-		
-		stringValues.add(command.getSecret());
-		if (command.getResource() != null) {
-			String[] strings = { command.getResource().getName(), command.getResource().getDescription(), command.getResource().getURI(),
-					command.getResource().getChannel(), command.getResource().getOwner(), command.getResource().getEzserver() };
+		stringValues.add(command.secret);
+		if (command.resource != null) {
+			String[] strings = { command.resource.name, command.resource.description, command.resource.uri,
+					command.resource.channel, command.resource.owner, command.resource.ezserver };
 			stringValues.addAll(Arrays.asList(strings));
-			if (command.getResource().getTags() != null) {
-				stringValues.addAll(command.getResource().getTags());
+			if (command.resource.tags != null) {
+				stringValues.addAll(command.resource.tags);
 			}
 		}
-		if (command.getResourceTemplate() != null) {
-			String[] strings = { command.getResourceTemplate().getName(), command.getResourceTemplate().getDescription(),
-					command.getResourceTemplate().getURI(), command.getResourceTemplate().getChannel(), command.getResourceTemplate().getOwner(),
-					command.getResourceTemplate().getEzserver() };
+		if (command.resourceTemplate != null) {
+			String[] strings = { command.resourceTemplate.name, command.resourceTemplate.description,
+					command.resourceTemplate.uri, command.resourceTemplate.channel, command.resourceTemplate.owner,
+					command.resourceTemplate.ezserver };
 			stringValues.addAll(Arrays.asList(strings));
-			if (command.getResourceTemplate().getTags() != null) {
-				stringValues.addAll(command.getResourceTemplate().getTags());
+			if (command.resourceTemplate.tags != null) {
+				stringValues.addAll(command.resourceTemplate.tags);
 			}
 		}
 
@@ -257,14 +244,15 @@ public class Server {
 		Response response = buildErrorResponse("cannot publish resource");
 
 		// Check for invalid resource fields
-		if (command.getResource() == null) {
+		if (command.resource == null) {
 			response = buildErrorResponse("missing resource");
-		} else if (!command.getResource().hasURI()) {
+		} else if (command.resource.uri == null || command.resource.uri.length() == 0
+				|| command.resource.uri.equals(Constants.emptyString)) {
 			// "The URI must be present, ..."
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else {
 			try {
-				URI uri = new URI(command.getResource().getURI());
+				URI uri = new URI(command.resource.uri);
 
 				if (!uri.isAbsolute()) {
 					// "... must be absolute ..."
@@ -272,15 +260,15 @@ public class Server {
 				} else if (uri.getScheme().equals("file")) {
 					// "... and cannot be a file scheme."
 					response = buildErrorResponse("invalid resource - uri cannot be a file scheme");
-				} else if (this.resources.containsKey(command.getResource())
-						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
+				} else if (this.resources.containsKey(command.resource)
+						&& !this.resources.get(command.resource).equals(command.resource.owner)) {
 					// "Publishing a resource with the same channel and URI but
 					// different owner is not allowed."
 					response = buildErrorResponse("cannot publish resource - uri already exists in channel");
 				} else {
 					// SUCCESS
-					command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
-					this.resources.put(command.getResource(), command.getResource().getOwner());
+					command.resource.ezserver = this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort();
+					this.resources.put(command.resource, command.resource.owner);
 					response = buildSuccessResponse();
 				}
 			} catch (URISyntaxException e) {
@@ -295,7 +283,7 @@ public class Server {
 	private void processQueryCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing QUERY command");
 
-		if (command.getResourceTemplate() == null) {
+		if (command.resourceTemplate == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
 		} else {
 
@@ -310,36 +298,36 @@ public class Server {
 				// Query rules:
 				// "(The template channel equals (case sensitive) the resource
 				// channel AND
-				boolean equalChannel = resource.getChannel().equals(command.getResourceTemplate().getChannel());
+				boolean equalChannel = resource.channel.equals(command.resourceTemplate.channel);
 
 				// If the template contains an owner that is not "", then the
 				// candidate owner must equal it (case sensitive) AND
-				boolean equalOrNoOwner = command.getResourceTemplate().getOwner().isEmpty() ? true
-						: resource.getOwner().equals(command.getResourceTemplate().getOwner());
+				boolean equalOrNoOwner = command.resourceTemplate.owner.equals(Constants.emptyString) ? true
+						: resource.owner.equals(command.resourceTemplate.owner);
 
 				// Any tags present in the template also are present in the
 				// candidate (case insensitive) AND
-				boolean equalTags = command.getResourceTemplate().getTags().size() == 0 ? true
-						: resource.getTags().containsAll(command.getResourceTemplate().getTags());
+				boolean equalTags = command.resourceTemplate.tags.size() == 0 ? true
+						: resource.tags.containsAll(command.resourceTemplate.tags);
 
 				// If the template contains a URI then the candidate URI matches
 				// (case sensitive) AND
-				boolean equalOrNoUri = command.getResourceTemplate().getURI().isEmpty() ? true
-						: resource.getURI().equals(command.getResourceTemplate().getURI());
+				boolean equalOrNoUri = command.resourceTemplate.uri.equals(Constants.emptyString) ? true
+						: resource.uri.equals(command.resourceTemplate.uri);
 
 				// (The candidate name contains the template name as a substring
 				// (for non "" template name) OR
-				boolean nameIsSubstring = command.getResourceTemplate().getName().isEmpty() ? true
-						: resource.getName().equals(command.getResourceTemplate().getName());
+				boolean nameIsSubstring = command.resourceTemplate.name.equals(Constants.emptyString) ? true
+						: resource.name.equals(command.resourceTemplate.name);
 
 				// The candidate description contains the template description
 				// as a substring (for non "" template descriptions) OR
-				boolean descriptionIsSubstring = command.getResourceTemplate().getDescription().isEmpty()
-						? true : resource.getDescription().equals(command.getResourceTemplate().getDescription());
+				boolean descriptionIsSubstring = command.resourceTemplate.description.equals(Constants.emptyString)
+						? true : resource.description.equals(command.resourceTemplate.description);
 
 				// The template description and name are both ""))"
-				boolean noDescriptionAndName = command.getResourceTemplate().getName().isEmpty()
-						&& command.getResourceTemplate().getDescription().isEmpty();
+				boolean noDescriptionAndName = command.resourceTemplate.name.equals(Constants.emptyString)
+						&& command.resourceTemplate.description.equals(Constants.emptyString);
 
 				if (equalChannel && equalOrNoOwner && equalTags && equalOrNoUri
 						&& (nameIsSubstring || descriptionIsSubstring || noDescriptionAndName)) {
@@ -348,24 +336,24 @@ public class Server {
 					// "The server will never reveal the owner of a resource in
 					// a response. If a resource has an owner then it will be
 					// replaced with the "*" character."
-					resource.setOwner("*");
+					resource.owner = "*";
 
 					sendString(resource.toJson(), output);
 
 					// Reset owner
-					resource.setOwner(owner);
+					resource.owner = owner;
 				}
 			}
 
 			// Relay
-			if (command.getRelay()) {
+			if (command.relay) {
 				// "The owner and channel information in the original query are
 				// both set to "" in the forwarded query"
-				command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
-				command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
+				command.resourceTemplate.owner = Constants.emptyString;
+				command.resourceTemplate.channel = Constants.emptyString;
 
 				// "Relay field is set to false"
-				command.setRelay(false);
+				command.relay = false;
 
 				// Forward query to all servers in servers list
 				final CountDownLatch latch = new CountDownLatch(this.servers.size());
@@ -435,17 +423,19 @@ public class Server {
 				}
 			}
 
-			sendResponse(buildResultSizeResponse(count), output);
+			Response response = new Response();
+			response.resultSize = count;
+			sendResponse(response, output);
 		}
 	}
 
 	private void processExchangeCommand(Command command, DataOutputStream output, ServerInfo source) {
 		logger.debug("Processing EXCHANGE command");
 
-		if (command.getServerList() == null || command.getServerList().size() == 0) {
+		if (command.serverList == null || command.serverList.size() == 0) {
 			sendResponse(buildErrorResponse("missing or invalid server list"), output);
 		} else {
-			for (ServerInfo serverInfo : command.getServerList()) {
+			for (ServerInfo serverInfo : command.serverList) {
 				// Check if that is our current server
 				if (serverInfo.getHostname() != serverArgs.getSafeHost()
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
@@ -460,50 +450,53 @@ public class Server {
 
 	private void processFetchCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing FETCH command");
-		
+		// TODO Auto-generated method stub
+
 		// Check for invalid resourceTemplate fields
-		if (command.getResourceTemplate() == null) {
+		if (command.resourceTemplate == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
-		} else if (command.getResourceTemplate().getURI() == null || command.getResourceTemplate().getURI().length() == 0
-				|| command.getResourceTemplate().getURI().isEmpty()) {
+		} else if (command.resourceTemplate.uri == null || command.resourceTemplate.uri.length() == 0
+				|| command.resourceTemplate.uri.equals(Constants.emptyString)) {
 			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
-		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
+		} else if (command.resourceTemplate.channel == null || command.resourceTemplate.channel.length() == 0
+				|| command.resourceTemplate.channel.equals(Constants.emptyString)) {
+			sendResponse(buildErrorResponse("invalid resourceTemplate - missing channel"), output);
+		} else if (!this.resources.containsKey(command.resourceTemplate)) {
 			sendResponse(buildErrorResponse("resource doesn't exist"), output);
 		} else {
 			// TODO Don't iterate over Map, do something else!!
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
-				if (resource.getChannel().equals(command.getResourceTemplate().getChannel())
-						&& resource.getURI().equals(command.getResourceTemplate().getURI())) {
+				if (resource.channel.equals(command.resourceTemplate.channel)
+						&& resource.uri.equals(command.resourceTemplate.uri)) {
 					sendResponse(buildSuccessResponse(), output);
 
 					try {
-						URI uri = new URI(resource.getURI());
+						URI uri = new URI(resource.uri);
 						File file = new File(uri);
-						long length = file.length();
-						
-						//TODO setter for resource size
-						resource.setResourceSize(length);
+						int length = (int) file.length();
+
+						resource.resourceSize = length;
 
 						// "The server will never reveal the owner of a resource
 						// in
 						// a response. If a resource has an owner then it will
 						// be
 						// replaced with the "*" character."
-						resource.setOwner("*");
+						resource.owner = "*";
 
 						sendString(resource.toJson(), output);
 
 						// Reset owner
-						resource.setOwner(owner);
+						resource.owner = owner;
 
 						// TODO convert file into bytes
 						// TODO write bytes to output
-						
-						// TODO PLEASE CONFIRM WHY RESULT SIZE IS 1 HERE
-						
-						sendResponse(buildResultSizeResponse(1), output);
+
+						Response response = new Response();
+						response.resultSize = 1;
+						sendResponse(response, output);
 						break;
 
 					} catch (URISyntaxException e) {
@@ -521,21 +514,21 @@ public class Server {
 		Response response = buildErrorResponse("cannot share resource");
 
 		// Check for invalid resource fields
-		if (command.getSecret() == null || command.getSecret().isEmpty() || command.getSecret().length() == 0) {
+		if (command.secret == null || command.secret.equals(Constants.emptyString) || command.secret.length() == 0) {
 			// "The server secret must be present ..."
 			response = buildErrorResponse("missing resource and/or secret");
-		} else if (!command.getSecret().equals(this.serverArgs.getSafeSecret())) {
+		} else if (!command.secret.equals(this.serverArgs.getSafeSecret())) {
 			// "... and must equal the value known to the server."
 			response = buildErrorResponse("incorrect secret");
-		} else if (command.getResource() == null) {
+		} else if (command.resource == null) {
 			response = buildErrorResponse("missing resource and/or secret");
-		} else if (command.getResource().getURI() == null || command.getResource().getURI().length() == 0
-				|| command.getResource().getURI().isEmpty()) {
+		} else if (command.resource.uri == null || command.resource.uri.length() == 0
+				|| command.resource.uri.equals(Constants.emptyString)) {
 			// "The URI must be present, ..."
 			response = buildErrorResponse("invalid resource - missing uri");
 		} else {
 			try {
-				URI uri = new URI(command.getResource().getURI());
+				URI uri = new URI(command.resource.uri);
 
 				if (!uri.isAbsolute()) {
 					// "..., must be absolute ..."
@@ -546,8 +539,8 @@ public class Server {
 				} else if (!uri.getScheme().equals("file")) {
 					// "... and must be a file scheme."
 					response = buildErrorResponse("invalid resource - uri must be a file scheme");
-				} else if (this.resources.containsKey(command.getResource())
-						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
+				} else if (this.resources.containsKey(command.resource)
+						&& !this.resources.get(command.resource).equals(command.resource.owner)) {
 					// "Sharing a resource with the same channel and URI but
 					// different owner is not allowed."
 					response = buildErrorResponse("cannot share resource - uri already exists in channel");
@@ -560,8 +553,8 @@ public class Server {
 								"invalid resource - uri does not point to a file on the local file system");
 					} else {
 						// SUCCESS
-						command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
-						this.resources.put(command.getResource(), command.getResource().getOwner());
+						command.resource.ezserver = this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort();
+						this.resources.put(command.resource, command.resource.owner);
 						response = buildSuccessResponse();
 					}
 				}
@@ -580,41 +573,34 @@ public class Server {
 		Response response = buildErrorResponse("cannot remove resource");
 
 		// Check for invalid resource fields
-		if (command.getResource() == null) {
+		if (command.resource == null) {
 			response = buildErrorResponse("missing resource");
-		} else if (command.getResource().getURI() == null || command.getResource().getURI().isEmpty()) {
+		} else if (command.resource.uri == null || command.resource.uri.equals(Constants.emptyString)) {
 			// URI must be present
 			response = buildErrorResponse("invalid resource - missing uri");
-		} else if (!this.resources.containsKey(command.getResource())) {
+		} else if (!this.resources.containsKey(command.resource)) {
 			// Resource must exist
 			response = buildErrorResponse("cannot remove resource - resource does not exist");
 		} else {
 			// SUCCESS
-			this.resources.remove(command.getResource());
+			this.resources.remove(command.resource);
 			response = buildSuccessResponse();
 		}
 
 		sendResponse(response, output);
 	}
 
-	/*
-	 * Methods for building a new success, error or result-size message
-	 */
 	private Response buildSuccessResponse() {
-		Response response = new Response();
-		response.setToSuccess();
-		return response;
+		if (this.successResponse == null) {
+			this.successResponse = new Response();
+			this.successResponse = this.successResponse.success();
+		}
+		return this.successResponse;
 	}
 
 	private Response buildErrorResponse(String message) {
 		Response response = new Response();
-		response.setToError(message);
-		return response;
-	}
-	
-	private Response buildResultSizeResponse(int size) {
-		Response response = new Response();
-		response.setToResultSize(size);
+		response = response.error(message);
 		return response;
 	}
 
@@ -628,6 +614,7 @@ public class Server {
 			output.flush();
 			logger.debug("SENT: " + string);
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 	}
@@ -659,7 +646,7 @@ public class Server {
 					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
-						// TODO This check needed? Project says: "It provides
+						// TODO: This check needed? Project says: "It provides
 						// the
 						// selected server with a copy of its entire Server
 						// Records
@@ -673,7 +660,7 @@ public class Server {
 					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
 
 					// "... and initiates an EXCHANGE command with it."
-					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION, serversAsString };
+					String[] args = { "-" + Constants.exchangeOption, "-" + Constants.serversOption, serversAsString };
 					ClientArgs exchangeArgs = new ClientArgs(args);
 					Command command = new Command().buildExchange(exchangeArgs);
 
