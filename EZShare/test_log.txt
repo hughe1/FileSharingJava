@@ -1,0 +1,78 @@
+Server used: sunrise.cis.unimelb.edu.au:3780
+
+Tests Completed: 
+
+PUBLISH
+
+-publish -name reddit -uri http://www.reddit.com -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"success"}
+
+-publish -channel ds -name reddit -uri http://www.reddit.com -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"success"}
+
+-host sunrise.cis.unimelb.edu.au -port 3780 -debug
+-query -exchange -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"error","errorMessage":"invalid command"}
+
+REMOVE
+-remove -uri http://www.reddit.com -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"success"}
+
+-remove -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"error","errorMessage":"cannot remove resource"}
+
+SHARE
+-share -uri file:///photo.jpg -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+RECEIVED: {"response":"error","errorMessage":"missing resource and\/or secret"}
+
+No secret, need to be properly tested on own server.
+
+QUERY
+-query -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+16/04/2017 19:57:03.158 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+16/04/2017 19:57:03.163 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"*","name":"Margiresource","channel":"","description":"testpublishforMargi","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.margi.com.au","tags":["web","html"]}
+16/04/2017 19:57:03.166 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"","channel":"","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.google.com","tags":[]}
+16/04/2017 19:57:03.168 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"xxx","channel":"","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.baidu.com","tags":[""]}
+16/04/2017 19:57:03.170 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"lms","channel":"","description":"The LMS page for unimelb.","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.lms.unimelb.edu.au","tags":["web"]}
+16/04/2017 19:57:03.172 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"*","name":"Aaron","channel":"","description":"Secret agent photo :-)","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"file:\/\/\/usr\/local\/share\/ezshare\/photo.jpg","tags":["photo","jpeg","jpg"]}
+16/04/2017 19:57:03.174 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"*","name":"cl","channel":"","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.aaa.com","tags":["web","html"]}
+16/04/2017 19:57:03.176 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"Baidu","channel":"","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:www.baidu.com","tags":["html","web"]}
+16/04/2017 19:57:03.178 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"cl","channel":"","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.aaa.com","tags":["web","html"]}
+16/04/2017 19:57:03.179 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"Unimelb","channel":"","description":"Main Page","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.unimelb.edu.au","tags":["web","html"]}
+16/04/2017 19:57:03.181 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"*","name":"me","channel":"","description":"","ezserver":"syd.sorz.org:3780","uri":"https:\/\/github.com\/sorz\/","tags":["web","html","github"]}
+16/04/2017 19:57:03.182 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"vmlinuz-linux","channel":"","description":"my linux kernel","ezserver":"syd.sorz.org:3780","uri":"file:\/\/\/boot\/vmlinuz-linux","tags":["linux"]}
+16/04/2017 19:57:03.184 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"*","name":"20MiB test file","channel":"","description":"20MiB random binary file. SHA-256: dbb6f7298753ea4a2c9ce9791c1a8c1da133d726765e95e8300f893cb493c820","ezserver":"syd.sorz.org:3780","uri":"file:\/\/\/opt\/ezserver\/20m.bin","tags":["file"]}
+16/04/2017 19:57:03.185 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"","channel":"","description":"","ezserver":"","uri":"","tags":[]}
+16/04/2017 19:57:03.186 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":13}
+16/04/2017 19:57:03.187 - [EZShare.Client.main] - [INFO] - End of expected server responses.
+
+-query -host sunrise.cis.unimelb.edu.au -port 3780 -debug.
+16/04/2017 19:57:59.426 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+16/04/2017 19:57:59.429 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"owner":"","name":"reddit","channel":"ds","description":"","ezserver":"sunrise.cis.unimelb.edu.au:3780","uri":"http:\/\/www.reddit.com","tags":[]}
+16/04/2017 19:57:59.431 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+16/04/2017 19:57:59.431 - [EZShare.Client.main] - [INFO] - End of expected server responses.
+
+FETCH
+-fetch -uri file:///opt/ezserver/20m.bin -host sunrise.cis.unimelb.edu.au -port 3780 -debug
+16/04/2017 20:03:41.029 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+16/04/2017 20:03:41.032 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":0}
+16/04/2017 20:03:41.033 - [EZShare.Client.main] - [ERROR] - Bad resourceSize response from the server.
+This is correct, since the file is one a different server...
+
+-fetch -uri file:///opt/ezserver/20m.bin -host syd.sorz.org -port 3780 -debug
+16/04/2017 20:07:31.579 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+16/04/2017 20:07:31.586 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"20MiB test file","tags":["file"],"description":"20MiB random binary file. SHA-256: dbb6f7298753ea4a2c9ce9791c1a8c1da133d726765e95e8300f893cb493c820","uri":"file:///opt/ezserver/20m.bin","channel":"","owner":"*","ezserver":"syd.sorz.org:3780","resourceSize":20971520}
+16/04/2017 20:07:31.589 - [EZShare.Client.main] - [INFO] - Downloading 20m.bin of size 20971520
+16/04/2017 20:07:42.969 - [EZShare.Client.main] - [INFO] - Download completed.
+16/04/2017 20:07:43.489 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+16/04/2017 20:07:43.496 - [EZShare.Client.main] - [INFO] - End of expected server responses.
+I was only successful after I bumped up the time out interval to 10*1000 (per the Lecturer's LMS post)
+
+EXCHANGE
+-exchange -servers syd.sorz.org:3789,sunrise.cis.unimelb.edu.au:3780 -host syd.sorz.org -port 3780 -debug
+SENT: {"command":"EXCHANGE","serverList":[{"hostname":"syd.sorz.org","port":3789},{"hostname":"sunrise.cis.unimelb.edu.au","port":3780}]}
+16/04/2017 20:12:06.478 - [EZShare.Client.main] - [INFO] - Waiting for response...
+16/04/2017 20:12:06.510 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+
+-exchange -uri file:///opt/ezserver/20m.bin -host syd.sorz.org -port 3780 -debug
+RECEIVED: {"errorMessage":"missing or invalid server list","response":"error"}

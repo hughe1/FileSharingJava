@@ -4,15 +4,18 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 /**
- * Intended to be extended by Command and Response classes. It abstracts away
- * common functionality to both sub classes. Mainly converting a class object to
- * a JSON string. Two options available, 1. to standard one line JSON and for
- * convenience options 2. toJsonPretty() for printing to the console.
+ * The JsonModel abstract class is intended to be extended by all classes which
+ * requires conversion to/from JSON during communication (i.e. Command, Response, 
+ * Resource classes in the current project).
  * 
- * gson-2.8.0.jar required in project. available from
+ * This abstract class provides the implementation of methods for converting 
+ * JsonModel objects to JSON string and an abstract method for converting from JSON 
+ * to a JsonModel object.
+ * 
+ * The JSON conversion is implemented with reference to the Gson library 
+ * ("gson-2.8.0.jar"), which is available from:
  * https://mvnrepository.com/artifact/com.google.code.gson/gson
  * 
- * @author Koteski, B
  */
 
 public abstract class JsonModel {
@@ -21,23 +24,30 @@ public abstract class JsonModel {
 	protected transient Gson g = new Gson();
 
 	/**
-	 * @return this object as a one liner JSON String
+	 * @return the calling object as a one line JSON String. Null fields are not
+	 * included in the JSON String.
 	 */
 	public String toJson() {
 		return g.toJson(this);
 	}
 
 	/**
-	 * @return this object as a pretty JSON String
+	 * @return the calling object as a pretty JSON String (formatted for printing 
+	 * to console). Null fields are not included in the JSON String.
 	 */
 	public String toJsonPretty() {
 		return gPretty.toJson(this);
 	}
 
 	/**
+	 * The fromJson method converts a JSON string to a JsonModel object.
+	 * 
 	 * @param json
-	 *            String that has fields resembling the subclass
-	 * @return an object of the class that extends JsonModel
+	 *            A JSON string containing fields that correspond to the fields 
+	 *            declared in the calling subclass
+	 *            
+	 * @return an object of the calling subclass, where each field's value is set
+	 * to the corresponding field's value in the input JSON string
 	 */
 	public abstract JsonModel fromJson(String json);
 }

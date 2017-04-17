@@ -1,13 +1,13 @@
 package EZShare;
 
 /**
- * This represents server information. Primarily provides a container for
- * hostname and port. Usage is intended in the EXCHANGE command builder to form
- * the serverList. Gson class will easily parse this into JSON and back to an
- * object.
+ * The ServerInfo class represents server information. The class primarily provides 
+ * a container for host name and port. Usage is intended in the EXCHANGE command 
+ * builder to form the serverList. 
  * 
- * @author Koteski, B
- *
+ * The class implements hashCode and equals so that objects can be easily hashed 
+ * and compared against other ServerInfo objects.
+ * 
  */
 public class ServerInfo {
 	private String hostname;
@@ -26,25 +26,17 @@ public class ServerInfo {
 		this.port = port;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#hashCode()
-	 */
+
 	@Override
 	public int hashCode() {
-		final int prime = 31;
+		final int PRIME = 31;
 		int result = 1;
-		result = prime * result + ((hostname.equals("")) ? 0 : hostname.hashCode());
-		result = prime * result + ((port == 0) ? 0 : port.hashCode());
+		result = PRIME * result + ((hostname.equals("")) ? 0 : hostname.hashCode());
+		result = PRIME * result + ((port == 0) ? 0 : port.hashCode());
 		return result;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -53,22 +45,28 @@ public class ServerInfo {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
+		
+		//Safe to cast as ServerInfo object now
 		ServerInfo other = (ServerInfo) obj;
 		if (hostname == null) {
 			if (other.hostname != null)
 				return false;
 		} else if (!hostname.equals(other.hostname))
 			return false;
+		
 		if (port == null) {
 			if (other.port != null)
 				return false;
 		} else if (!port.equals(other.port))
 			return false;
+		
+		//Matching hostname and port
 		return true;
 	}
 	
+	
 	/**
-	 * @return the hostname
+	 * @return the host name
 	 */
 	public String getHostname() {
 		return hostname;
