@@ -1,6 +1,5 @@
 package EZShare;
 
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
@@ -20,54 +19,49 @@ import org.apache.logging.log4j.Logger;
  * protocol defined in the assignment specifications.
  * 
  * Aaron's server: sunrise.cis.unimelb.edu.au:3780
- * 
- * @author Koteski, B
- *
  */
 public class Client {
 
-	private ClientArgs clientArgs;
 	public static final int TIME_OUT_LIMIT = 5000;
-	private static Logger logger;
-	private static Socket socket;
+	public static final int BUF_SIZE = 1024 * 4;
+	private Logger logger;
+	private ClientArgs clientArgs;
+	private Socket socket;
+	private ServerInfo serverInfo;
 	
 	public static void main(String[] args) {
-
-		Client client = new Client(args);
-
-
-		// Configure logger
-		if (client.clientArgs.hasOption(Constants.debugOption)) {
-			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
-		} else {
-			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
-		}
-		logger = LogManager.getRootLogger();
-
-		logger.debug("Debugger enabled");
-				
-		Command command = client.parseCommand();
-		
-		ServerInfo serverInfo = client.parseServerInfo();
-
-		logger.debug("Publishing to " + serverInfo);
-
-		
+		// create a client and run it
+		new Client(args).run();
+	}
+	
+	/**
+	 * Constructor for Client
+	 * 
+	 * @param args
+	 *            String[] command line arguments
+	 */
+	private Client(String[] args) {
+		this.clientArgs = new ClientArgs(args);
+		this.configLogger();		
+	}
+	
+	/**
+	 * The only method that should be called after creating a client object.
+	 * It is responsible for doing the client work. Furthermore, it establishes
+	 * a connection with the server, sends a command and processes the response.
+	 */
+	public void run() {
 		try {
 			logger.info("Connecting to host "+serverInfo.getHostname()+" at port "+serverInfo.getPort());
-			socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
-			socket.setSoTimeout(TIME_OUT_LIMIT); // wait for 5 seconds
+			this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+			this.socket.setSoTimeout(TIME_OUT_LIMIT); // wait for TIME_OUT_LIMIT seconds
+			
 			DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 			DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+			Command command = this.parseCommand();
+			this.submitCommand(command, outToServer);
 
-			outToServer.writeUTF(command.toJson());
-			logger.info("Sending "+command.command+" command... ");
-			outToServer.flush();
-			logger.info(command.command+" command sent. Waiting for response.. ");
-
-			logger.debug("SENT: " + command.toJson());
-
-			// block call
+			// block call, wait for client response
 			String fromServer = inFromServer.readUTF();
 			if(fromServer.contains("error")) {
 				// onError
@@ -75,10 +69,10 @@ public class Client {
 				logger.error(response.toJson());
 			}
 			else if(fromServer.contains("success")) {
-				// onSuccess()
+				// onSuccess
 				Response response = new Response().fromJson(fromServer);
 				logger.info(response.toJson());
-				client.onSuccess(command,inFromServer);
+				this.onSuccess(command,inFromServer);
 			}
 			else {
 				// something went wrong
@@ -93,43 +87,67 @@ public class Client {
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
-		
 	}
-
+	
 	/**
-	 * Constructor for Client
+	 * Submits a command to a DataOutPutStream
 	 * 
-	 * @param args
-	 *            String[] command line arguments
+	 * @param command the object containing the instructions to the server
+	 * @param outToServer is the output stream
+	 * @throws IOException if method cannot write to the output stream
 	 */
-	public Client(String[] args) {
-		clientArgs = new ClientArgs(args);
+	private void submitCommand(Command command, DataOutputStream outToServer) 
+			throws IOException {
+		outToServer.writeUTF(command.toJson());
+		logger.info("Sending "+command.command+" command... ");
+		outToServer.flush();
+		logger.info(command.command+" command sent. Waiting for response.. ");
+		logger.debug("SENT: " + command.toJson());
 	}
 
 	/**
 	 * 
 	 * @return
 	 */
-	public Command parseCommand() {
+	private Command parseCommand() {
 		return new Command(clientArgs);
 	}
+	
+	/**
+	 * 
+	 */
+	private void configLogger() {
+		// Configure logger
+		System.out.println(System.getProperty("user.dir"));
+		if (this.clientArgs.hasOption(Constants.debugOption)) {
+			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
+		} else {
+			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
+		}
+		logger = LogManager.getRootLogger();
+		logger.debug("Debugger enabled");
+		this.serverInfo = this.parseServerInfo();
+		logger.debug("Publishing to " + serverInfo);
+	}
 
 	/**
 	 * 
 	 * @return
 	 */
-	public ServerInfo parseServerInfo() {
+	private ServerInfo parseServerInfo() {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
 	}
 	
 	/**
+	 * This is called when the client responds and the response contains a
+	 * {"response" : "success"} JSON message 
 	 * 
 	 * @param command
 	 * @param inFromServer
 	 * @throws IOException 
 	 * @throws SocketTimeoutException 
 	 */
-	public void onSuccess(Command command, DataInputStream inFromServer) throws 
+	private void onSuccess(Command command, DataInputStream inFromServer) throws 
 		SocketTimeoutException, IOException {
 		// publish, remove, share, exchange -> only print the response
 		// query, fetch -> have to deal with these dynamically
@@ -153,10 +171,13 @@ public class Client {
 	 * process anything after the initial JSON object from the server.
 	 * 
 	 * @param inFromServer
+	 * @throws IOException 
 	 */
-	private void processFetch(DataInputStream inFromServer) {
+	private void processFetch(DataInputStream inFromServer) throws IOException {
 		// TODO Auto-generated method stub
-
+		Resource resource = new Resource().fromJson(inFromServer.readUTF());
+		this.receiveFile("test.jpg", resource.resourceSize);
+		this.logger.info(inFromServer.readUTF());
 	}
 	
 	/**
@@ -169,7 +190,6 @@ public class Client {
 	 */
 	private void processQuery(DataInputStream inFromServer) throws 
 		SocketTimeoutException, IOException {
-		// TODO Auto-generated method stub
 		boolean run = true;
 		while(run) {
 			String fromServer = inFromServer.readUTF();
@@ -183,32 +203,31 @@ public class Client {
 		}
 	}
 
+	
 	/**
-	 * 
-	 * @param fileName
-	 * @param fileSize
-	 * @param socket
+	 * It downloads a file from a socket InputStream and BUF_SIZE at a time and
+	 * writes the output to a FileOutputStream.
+	 * @param fileName the name of the file to write to disk
+	 * @param fileSize the number of bytes the expected file is going to be
 	 * @throws IOException
 	 */
-	public void receiveFile(String fileName, int fileSize) throws IOException {
-		InputStream is = socket.getInputStream();
-		FileOutputStream fos = new FileOutputStream(fileName);
-		BufferedOutputStream bos = new BufferedOutputStream(fos);
-		// create a bytes array + 1 byte.. otherwise it will hang
-		byte[] bytes  = new byte [fileSize+1];
-	    int bytesRead = is.read(bytes,0,bytes.length);
-	    // System.out.println("bytes read: " + bytesRead);
-	    int current = bytesRead;
-	    do {
-	    	bytesRead = is.read(bytes, current, (bytes.length-current));
-	    	// System.out.println("bytes read: " + bytesRead);
-	    	if(bytesRead >= 0) current += bytesRead;
-	    } while (bytesRead > -1);
-	    // bytes left over on the buffer
-	    bos.write(bytes);
-	    bos.flush();
-	    // close in and out streams
-	    fos.close();
-	    bos.close();
+	private void receiveFile(String fileName, int fileSize) throws IOException {
+		InputStream in = this.socket.getInputStream();
+		FileOutputStream out = new FileOutputStream(fileName);
+		byte[] bytes  = new byte [BUF_SIZE];		
+		int count, totalRead = 0, bytesToRead = 0;
+		// stop reading only when have read bytes equal to the fileSize
+		while(totalRead < fileSize) {
+			// determine how many more bytes to read
+			bytesToRead = Math.min(bytes.length, fileSize-totalRead);
+			// read bytesToRead from the InputStream
+			count = in.read(bytes,0,bytesToRead);
+			totalRead += count;
+			// write bytes to file
+			out.write(bytes,0,count);
+			this.logger.debug("downloaded: " + count + " bytes, remaining: " + 
+					(fileSize - totalRead) + " bytes");
+		}
+		out.close();
 	}
 }

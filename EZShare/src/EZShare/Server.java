@@ -475,7 +475,7 @@ public class Server {
 					try {
 						URI uri = new URI(resource.uri);
 						File file = new File(uri);
-						long length = file.length();
+						int length = (int) file.length();
 
 						resource.resourceSize = length;
 

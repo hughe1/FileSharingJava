@@ -4,12 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
 
 public class TestServer {
 
@@ -35,7 +33,9 @@ public class TestServer {
 //			
 //			OutputStream os = sock.getOutputStream();
 //			os.write(mybytearray,0,mybytearray.length);
-//			os.flush();			
+//			os.flush();
+			
+			servsock.close();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
