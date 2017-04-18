@@ -31,6 +31,7 @@ import org.apache.logging.log4j.Logger;
 
 public class Server {
 	public static final int TIME_OUT_LIMIT = 5000;
+	public static final int BUF_SIZE = 1024 * 4; // when sending a file
 	
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
@@ -40,18 +41,9 @@ public class Server {
 	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
 
 	public static void main(String[] args) {
-		Server server = new Server(args);
-
-		if (server.serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
-			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
-		} else {
-			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
-		}
-		logger = LogManager.getRootLogger();
-		logger.debug("Debugger enabled");
-
-		server.parseCommand();
-		server.listen();
+		// instantiate a server and have it listen on a port
+		// specified in command line arguments
+		new Server(args).listen();
 	}
 
 	/**
@@ -62,85 +54,112 @@ public class Server {
 	 */
 	public Server(String[] args) {
 		serverArgs = new ServerArgs(args);
+		this.printDebugInfo();
 		// TODO: populate resources from file/Database
 	}
 
 	/**
-	 * Examines the command line arguments
-	 * 
-	 * @return Command object encapsulating the arguments provided
+	 * Examines the command line arguments and prints useful debug info
+	 * when the server is deployed.
 	 */
-	public Command parseCommand() {
-		if (serverArgs.cmd.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
+	private void printDebugInfo() {
+		if (serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
+			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
+		} else {
+			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
+		}
+		logger.debug("Debugger enabled");
+		logger = LogManager.getRootLogger();
+		if (serverArgs.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
 			logger.debug("Advertised hostname command found");
 		}
-		if (serverArgs.cmd.hasOption(ServerArgs.PORT_OPTION)) {
+		if (serverArgs.hasOption(ServerArgs.PORT_OPTION)) {
 			logger.debug("Port command found");
 		}
-		if (serverArgs.cmd.hasOption(ServerArgs.SECRET_OPTION)) {
+		if (serverArgs.hasOption(ServerArgs.SECRET_OPTION)) {
 			logger.debug("Secret command found");
 		}
-
 		logger.info("Using secret " + this.serverArgs.getSafeSecret());
 		logger.info("Using advertised hostname " + this.serverArgs.getSafeHost());
 		logger.info("Bound to port " + this.serverArgs.getSafePort());
-		return null;
 	}
 
 	/**
-	 * 
+	 * It initiates the server. The only method that one should call after
+	 * instantiating a Server object.
 	 */
 	public void listen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
 
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
 			logger.info("Listening for request...");
-
-			// Schedule EXCHANGE with server from servers list every X seconds
-			// (standard: 600 seconds = 10 minutes)
-			logger.info("Setting up server exchange every " + this.serverArgs.getSafeExchangeInterval() + " seconds");
-			Timer timer = new Timer();
-			timer.schedule(new ExchangeJob(), 0, this.serverArgs.getSafeExchangeInterval() * 1000);
-
-			int limit = this.serverArgs.getSafeConnectionInterval();
+			this.setExchangeTimer();			
 
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
 				logger.info("Received request");
 
-				// "The server will ensure that the time between successive
-				// connections from any IP address will be no less than a limit
-				// (1 second by default but configurable on the command line)."
-				Long timestamp = this.clientAccesses.get(client.getInetAddress());
-				Long currentTime = System.currentTimeMillis();
-				if (timestamp != null && ((limit * 1000) + timestamp >= currentTime)) {
-					// "An incomming [sic] request that violates this rule will
+				if( isFrequentClient(client) ) {
+					// "An incoming request that violates the request interval limit will
 					// be closed immediately with no response."
-					logger.info("Same client sent request less than " + limit + " second(s) ago. Closed client.");
 					client.close();
 				} else {
-					// TODO: replace this with a call to a class that will serve
-					// client
-					// i.e., implement a runnable class
-					// lambda expression
+					// otherwise server the client
 					Thread t = new Thread(() -> this.serveClient(client));
 					t.start();
 				}
-				// Record client access
-				this.clientAccesses.put(client.getInetAddress(), currentTime);
 			}
-
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 			e.printStackTrace();
 		}
-
+	}
+	
+	/**
+	 * Checks if a client's IP address has been logged and if so, it ensures
+	 * that the client isn't making requests that violate the request interval
+	 * limit. The method also keeps track of client requests.
+	 * 
+	 * @param client Socket connection.
+	 * @return true if the client has violated the time interval limit, otherwise
+	 * return false.
+	 */
+	private boolean isFrequentClient(Socket client) {
+		int limit = this.serverArgs.getSafeConnectionInterval();
+		// "The server will ensure that the time between successive
+		// connections from any IP address will be no less than a limit
+		// (1 second by default but configurable on the command line)."
+		Long timestamp = this.clientAccesses.get(client.getInetAddress());
+		Long currentTime = System.currentTimeMillis();
+		// Record client access
+		this.clientAccesses.put(client.getInetAddress(), currentTime);
+		if (timestamp != null && ((limit * 1000) + timestamp >= currentTime)) {
+			// "An incomming [sic] request that violates this rule will
+			// be closed immediately with no response."
+			logger.info("Same client sent request less than " + limit + " second(s) ago. Closed client.");
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Creates a process which will periodically talk to other servers to 
+	 * Exchange details of other servers.
+	 */
+	private void setExchangeTimer() {
+		// Schedule EXCHANGE with server from servers list every X seconds
+		// (standard: 600 seconds = 10 minutes)
+		logger.info("Setting up server exchange every " + this.serverArgs.getSafeExchangeInterval() + " seconds");
+		Timer timer = new Timer();
+		timer.schedule(new ExchangeJob(), 0, this.serverArgs.getSafeExchangeInterval() * 1000);
 	}
 
 	/**
+	 * The method is called into it's own thread. It is responsible for serving the
+	 * client connection based on what command the server will receive.
 	 * 
-	 * @param client
+	 * @param client Socket connection from a client.
 	 */
 	private void serveClient(Socket client) {
 		try (Socket clientSocket = client) {
@@ -721,9 +740,9 @@ public class Server {
 	 * @param out
 	 * @throws IOException
 	 */
-	public void sendFile(File file, OutputStream out) throws IOException {
+	private void sendFile(File file, OutputStream out) throws IOException {
 		FileInputStream in = new FileInputStream(file);
-		byte[] bytes = new byte[1024*4];		
+		byte[] bytes = new byte[BUF_SIZE];		
 		int count;
 		// this will read up to bytes.length bytes from the file
 		while((count = in.read(bytes)) > 0) {
