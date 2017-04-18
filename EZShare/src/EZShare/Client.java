@@ -173,9 +173,15 @@ public class Client {
 	 * @throws IOException 
 	 */
 	private void processFetch(DataInputStream inFromServer) throws IOException {
-		// TODO Auto-generated method stub
-		Resource resource = new Resource().fromJson(inFromServer.readUTF());
-		this.receiveFile("test.jpg", resource.getResourceSize());
+		String resourceString = inFromServer.readUTF();
+		this.logger.debug("RECEIVED: " + resourceString);
+		Resource resource = new Resource().fromJson(resourceString);
+		
+		// Get file name
+		String[] strings = resource.getURI().split("/");
+		String fileName = strings[strings.length - 1];
+		
+		this.receiveFile(fileName, resource.getResourceSize());
 		this.logger.info(inFromServer.readUTF());
 	}
 	
@@ -194,10 +200,11 @@ public class Client {
 			String fromServer = inFromServer.readUTF();
 			if(fromServer.contains("resultSize")) {
 				run = false;
-				logger.info(new Response().fromJson(fromServer).toJson());
+				// TODO AF Why is this getting a resource from the json and the jsonifying it again? Could just be logger.info(.. + fromServer)?? Same below
+				logger.info("RECEIVED: " + new Response().fromJson(fromServer).toJson());
 			}
 			else {
-				logger.info(new Resource().fromJson(fromServer).toJson());
+				logger.info("RECEIVED: " + new Resource().fromJson(fromServer).toJson());
 			}			
 		}
 	}

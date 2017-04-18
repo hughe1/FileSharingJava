@@ -482,15 +482,12 @@ public class Server {
 						URI uri = new URI(resource.getURI());
 						File file = new File(uri);
 						int length = (int) file.length();
-						
-						//TODO setter for resource size
+
 						resource.setResourceSize(length);
 
 						// "The server will never reveal the owner of a resource
-						// in
-						// a response. If a resource has an owner then it will
-						// be
-						// replaced with the "*" character."
+						// in a response. If a resource has an owner then it
+						// will be replaced with the "*" character."
 						resource.setOwner("*");
 
 						sendString(resource.toJson(), output);
@@ -498,10 +495,15 @@ public class Server {
 						// Reset owner
 						resource.setOwner(owner);
 
-						// TODO convert file into bytes
-						// TODO write bytes to output
-						
+						sendFile(file, output);
+
 						// TODO PLEASE CONFIRM WHY RESULT SIZE IS 1 HERE
+						// AF: According to specs
+						// "A successful fetch will respond as follows:
+						// { "response" : "success" }
+						// { RESOURCE }
+						// exact bytes of resource
+						// { "resultSize" : 1 }"
 						
 						sendResponse(buildResultSizeResponse(1), output);
 						break;
@@ -509,6 +511,9 @@ public class Server {
 					} catch (URISyntaxException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+					} catch (IOException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+						sendResponse(buildErrorResponse("invalid resource - unable to send file"), output);
 					}
 				}
 			}
@@ -719,20 +724,17 @@ public class Server {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public void sendFile(File file, Socket socket) throws IOException {
+	public void sendFile(File file, DataOutputStream os) throws IOException {
 		// define an array as the length of the file
 		byte[] bytes = new byte[(int) file.length()];
 		FileInputStream fis = new FileInputStream(file);
 		BufferedInputStream bis = new BufferedInputStream(fis);
 		// read the file into the bytes array
 		bis.read(bytes);
-		// define an output stream
-		OutputStream os = socket.getOutputStream();
 		// write the bytes array onto the stream
 		os.write(bytes);
 		os.flush();
-		// close bis and os - no longer needed
+		// close bis - no longer needed
 		bis.close();
-		os.close();
 	}
 }

@@ -24,6 +24,8 @@ public class ServerArgs extends ArgsManager {
 	public static final String SECRET_OPTION = "secret";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final String DEFAULT_SECRET = UUID.randomUUID().toString(); // Large random string.
+	public static String DEFAULT_HOST = "";
 	public static final Integer DEFAULT_SAFE_EXCHANGE_INTERVAL = 600; //10 min
 	public static final Integer DEFAULT_SAFE_CONNECTION_INTERVAL = 1;
 	
@@ -57,7 +59,7 @@ public class ServerArgs extends ArgsManager {
 	 */
 	public Integer getSafePort() {
 		if (!this.hasOption(PORT_OPTION)) {
-			return DEFAULT_PORT; // default port
+			return DEFAULT_PORT;
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
 	}
@@ -72,14 +74,17 @@ public class ServerArgs extends ArgsManager {
 	 */
 	public String getSafeHost() {
 		if (!this.hasOption(ClientArgs.HOST_OPTION)) {
-			// "The default advertised host name will be the operating system supplied hostname."
-			try {
-				return InetAddress.getLocalHost().getHostName();
-			} catch (UnknownHostException e) {
-				Logger logger = LogManager.getRootLogger();
-				logger.error(e.getClass().getName() + " " + e.getMessage());
-			} 
-			return "localhost"; // default host
+			if (DEFAULT_HOST.equals("")) {
+				// "The default advertised host name will be the operating system supplied hostname."
+				try {
+					DEFAULT_HOST = InetAddress.getLocalHost().getHostName();
+				} catch (UnknownHostException e) {
+					DEFAULT_HOST = "localhost";
+					Logger logger = LogManager.getRootLogger();
+					logger.error(e.getClass().getName() + " " + e.getMessage());
+				} 
+			}
+			return DEFAULT_HOST;
 		}
 		return this.getOptionValue(ClientArgs.HOST_OPTION);
 	}
@@ -92,8 +97,7 @@ public class ServerArgs extends ArgsManager {
 	 */
 	public String getSafeSecret() {
 		if (!this.hasOption(SECRET_OPTION)) {
-			// Generate a default secret which is a large random string.
-			return UUID.randomUUID().toString();
+			return DEFAULT_SECRET;
 		}
 		return this.getOptionValue(SECRET_OPTION);
 	}
