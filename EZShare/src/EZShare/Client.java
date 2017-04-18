@@ -194,17 +194,16 @@ public class Client {
 	 * @throws SocketTimeoutException, IOException 
 	 */
 	private void processQuery(DataInputStream inFromServer) throws 
-		SocketTimeoutException, IOException {
+			SocketTimeoutException, IOException {
 		boolean run = true;
 		while(run) {
 			String fromServer = inFromServer.readUTF();
 			if(fromServer.contains("resultSize")) {
 				run = false;
-				// TODO AF Why is this getting a resource from the json and the jsonifying it again? Could just be logger.info(.. + fromServer)?? Same below
-				logger.info("RECEIVED: " + new Response().fromJson(fromServer).toJson());
+				logger.info("RECEIVED: " + fromServer);
 			}
 			else {
-				logger.info("RECEIVED: " + new Resource().fromJson(fromServer).toJson());
+				logger.info("RECEIVED: " + fromServer);
 			}			
 		}
 	}
@@ -217,17 +216,18 @@ public class Client {
 	 * @param fileSize the number of bytes the expected file is going to be
 	 * @throws IOException
 	 */
-	private void receiveFile(String fileName, int fileSize) throws IOException {
+	private void receiveFile(String fileName, long fileSize) throws IOException {
 		InputStream in = this.socket.getInputStream();
 		FileOutputStream out = new FileOutputStream(fileName);
 		byte[] bytes  = new byte [BUF_SIZE];		
-		int count, totalRead = 0, bytesToRead = 0;
+		int count, totalRead = 0;
+		long bytesToRead = 0;
 		// stop reading only when have read bytes equal to the fileSize
 		while(totalRead < fileSize) {
 			// determine how many more bytes to read
 			bytesToRead = Math.min(bytes.length, fileSize-totalRead);
 			// read bytesToRead from the InputStream
-			count = in.read(bytes,0,bytesToRead);
+			count = in.read(bytes,0,(int) bytesToRead);
 			totalRead += count;
 			// write bytes to file
 			out.write(bytes,0,count);

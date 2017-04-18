@@ -38,13 +38,18 @@ public class Resource extends JsonModel{
 	private String channel;
 	private String owner;
 	private String ezserver;
-	private int resourceSize;
+	private Long resourceSize;
 
 	/**
 	 * Default constructor
 	 */
 	public Resource() {
 
+	}
+	
+	@Override
+	public String toString() {
+		return this.toJson();
 	}
 
 	/**
@@ -101,7 +106,7 @@ public class Resource extends JsonModel{
 	 * @return true if the calling object has a URI
 	 */
 	public boolean hasURI(){
-		return uri == null || uri.isEmpty();
+		return !(uri == null || uri.isEmpty());
 	}
 	
 	/*
@@ -135,7 +140,7 @@ public class Resource extends JsonModel{
 		return ezserver;
 	}
 	
-	public int getResourceSize() {
+	public Long getResourceSize() {
 		return resourceSize;
 	}
 
@@ -155,8 +160,9 @@ public class Resource extends JsonModel{
 		this.ezserver = ezserver;
 	}
 	
-	public void setResourceSize(int resourceSize) {
-		this.resourceSize = resourceSize;
+	public void setResourceSize(long l) {
+		System.out.println("im here " + l);
+		this.resourceSize = l;
 	}
 
 	

@@ -1,6 +1,5 @@
 package EZShare;
 
-import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -160,7 +159,7 @@ public class Server {
 					processQueryCommand(command, output);
 					break;
 				case Command.FETCH_COMMAND:
-					processFetchCommand(command, output);
+					processFetchCommand(command, output, clientSocket.getOutputStream());
 					break;
 				case Command.EXCHANGE_COMMAND:
 					processExchangeCommand(command, output,
@@ -285,7 +284,8 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+				// sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+				response = buildErrorResponse("invalid resource - invalid uri");
 			}
 		}
 
@@ -458,7 +458,7 @@ public class Server {
 		}
 	}
 
-	private void processFetchCommand(Command command, DataOutputStream output) {
+	private void processFetchCommand(Command command, DataOutputStream output, OutputStream os) {
 		logger.debug("Processing FETCH command");
 		
 		// Check for invalid resourceTemplate fields
@@ -497,7 +497,7 @@ public class Server {
 						// Reset owner
 						resource.setOwner(owner);
 
-						sendFile(file, output);
+						this.sendFile(file, os);
 
 						foundResources++;
 						break;
@@ -561,8 +561,10 @@ public class Server {
 					} else {
 						// SUCCESS
 						command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
+						logger.debug("successfully stored a resource: " + command.getResource());
 					}
 				}
 			} catch (URISyntaxException e) {
@@ -716,20 +718,18 @@ public class Server {
 	/**
 	 * 
 	 * @param file
-	 * @param socket
+	 * @param out
 	 * @throws IOException
 	 */
-	public void sendFile(File file, DataOutputStream os) throws IOException {
-		// define an array as the length of the file
-		byte[] bytes = new byte[(int) file.length()];
-		FileInputStream fis = new FileInputStream(file);
-		BufferedInputStream bis = new BufferedInputStream(fis);
-		// read the file into the bytes array
-		bis.read(bytes);
-		// write the bytes array onto the stream
-		os.write(bytes);
-		os.flush();
-		// close bis - no longer needed
-		bis.close();
+	public void sendFile(File file, OutputStream out) throws IOException {
+		FileInputStream in = new FileInputStream(file);
+		byte[] bytes = new byte[1024*4];		
+		int count;
+		// this will read up to bytes.length bytes from the file
+		while((count = in.read(bytes)) > 0) {
+			// send exactly count bytes to the stream, i.e., to the client
+			out.write(bytes,0,count);
+		}
+		in.close();
 	}
 }
