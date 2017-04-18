@@ -197,7 +197,7 @@ public class Server {
 		// "String values must not contain the "\0" character, nor start or end
 		// with whitespace."
 		// "The field must not be the single character "*"."
-		// TODO Check if every possible case is covered
+		// TODO AF Can someone re-check if every possible case is covered
 		
 		boolean errorFound = false;
 
@@ -301,8 +301,8 @@ public class Server {
 
 			sendResponse(buildSuccessResponse(), output);
 
-			// TODO Don't iterate over whole map!!
 			int count = 0;
+			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
@@ -470,7 +470,9 @@ public class Server {
 		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
 			sendResponse(buildErrorResponse("resource doesn't exist"), output);
 		} else {
-			// TODO Don't iterate over Map, do something else!!
+			int foundResources = 0;
+			
+			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
@@ -497,17 +499,8 @@ public class Server {
 
 						sendFile(file, output);
 
-						// TODO PLEASE CONFIRM WHY RESULT SIZE IS 1 HERE
-						// AF: According to specs
-						// "A successful fetch will respond as follows:
-						// { "response" : "success" }
-						// { RESOURCE }
-						// exact bytes of resource
-						// { "resultSize" : 1 }"
-						
-						sendResponse(buildResultSizeResponse(1), output);
+						foundResources++;
 						break;
-
 					} catch (URISyntaxException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
@@ -517,6 +510,8 @@ public class Server {
 					}
 				}
 			}
+			
+			sendResponse(buildResultSizeResponse(foundResources), output);
 		}
 	}
 
@@ -664,7 +659,7 @@ public class Server {
 					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
-						// TODO This check needed? Project says: "It provides
+						// TODO AF This check needed? Project says: "It provides
 						// the
 						// selected server with a copy of its entire Server
 						// Records
