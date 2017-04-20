@@ -19,7 +19,7 @@ public class ServerArgs extends ArgsManager {
 	public static final String ADVERTISED_HOST_NAME_OPTION = "advertisedhostname";
 	public static final String CONNECTION_INTERVAL_LIMIT_OPTION = "connectionintervallimit";
 	public static final String DEBUG_OPTION = "debug";
-	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeInterval";
+	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeinterval";
 	public static final String PORT_OPTION = "port";
 	public static final String SECRET_OPTION = "secret";
 
@@ -33,6 +33,7 @@ public class ServerArgs extends ArgsManager {
 		//"options" is static, thus requires one-time initialization
 		options.addOption(ADVERTISED_HOST_NAME_OPTION, true, "advertised hostname");
 		options.addOption(CONNECTION_INTERVAL_LIMIT_OPTION, true, "connection interval limit in seconds");
+		options.addOption(EXCHANGE_INTERVAL_OPTION, true, "exchange interval in seconds");
 		options.addOption(PORT_OPTION, true, "server port, an integer");
 		options.addOption(SECRET_OPTION, true, "secret");
 		options.addOption(DEBUG_OPTION, false, "print debug information");

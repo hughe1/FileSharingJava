@@ -43,7 +43,9 @@ public class ClientArgs extends ArgsManager {
 	 */
 	static {
 		//"options" is static, thus requires one-time initialization
-		if (options.getOptions().isEmpty()) {
+		// AF Had to comment out the if below because server needs to access 
+		// clientArgs when exchanging and options was set to serverArgs
+		//if (options.getOptions().isEmpty()) {
 			options.addOption(CHANNEL_OPTION, true, "channel");
 			options.addOption(DEBUG_OPTION, false, "print debug information");
 			options.addOption(DESCRIPTION_OPTION, true, "resource description");
@@ -61,7 +63,7 @@ public class ClientArgs extends ArgsManager {
 			options.addOption(SHARE_OPTION, false, "share resource on server");
 			options.addOption(TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
 			options.addOption(URI_OPTION, true, "resource URI");
-		}
+		//}
 	}
 	
 	/**

@@ -68,8 +68,8 @@ public class Server {
 		} else {
 			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
 		}
-		logger.debug("Debugger enabled");
 		logger = LogManager.getRootLogger();
+		logger.debug("Debugger enabled");
 		if (serverArgs.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
 			logger.debug("Advertised hostname command found");
 		}
@@ -466,7 +466,7 @@ public class Server {
 		} else {
 			for (ServerInfo serverInfo : command.getServerList()) {
 				// Check if that is our current server
-				if (serverInfo.getHostname() != serverArgs.getSafeHost()
+				if (!serverInfo.getHostname().equals(serverArgs.getSafeHost())
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
 					// Add server to server list
 					servers.put(serverInfo, true);
