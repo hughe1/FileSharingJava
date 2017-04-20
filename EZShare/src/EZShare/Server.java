@@ -32,11 +32,11 @@ import org.apache.logging.log4j.Logger;
 public class Server {
 	public static final int TIME_OUT_LIMIT = 5000;
 	public static final int BUF_SIZE = 1024 * 4; // when sending a file
-	
+
 	private ServerArgs serverArgs;
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
-		
+
 	private static Logger logger;
 	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
 
@@ -93,15 +93,16 @@ public class Server {
 
 		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
 			logger.info("Listening for request...");
-			this.setExchangeTimer();			
+			this.setExchangeTimer();
 
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
 				logger.info("Received request");
 
-				if( isFrequentClient(client) ) {
-					// "An incoming request that violates the request interval limit will
+				if (isFrequentClient(client)) {
+					// "An incoming request that violates the request interval
+					// limit will
 					// be closed immediately with no response."
 					client.close();
 				} else {
@@ -115,15 +116,16 @@ public class Server {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Checks if a client's IP address has been logged and if so, it ensures
 	 * that the client isn't making requests that violate the request interval
 	 * limit. The method also keeps track of client requests.
 	 * 
-	 * @param client Socket connection.
-	 * @return true if the client has violated the time interval limit, otherwise
-	 * return false.
+	 * @param client
+	 *            Socket connection.
+	 * @return true if the client has violated the time interval limit,
+	 *         otherwise return false.
 	 */
 	private boolean isFrequentClient(Socket client) {
 		int limit = this.serverArgs.getSafeConnectionInterval();
@@ -142,9 +144,9 @@ public class Server {
 		}
 		return false;
 	}
-	
+
 	/**
-	 * Creates a process which will periodically talk to other servers to 
+	 * Creates a process which will periodically talk to other servers to
 	 * Exchange details of other servers.
 	 */
 	private void setExchangeTimer() {
@@ -156,10 +158,11 @@ public class Server {
 	}
 
 	/**
-	 * The method is called into it's own thread. It is responsible for serving the
-	 * client connection based on what command the server will receive.
+	 * The method is called into it's own thread. It is responsible for serving
+	 * the client connection based on what command the server will receive.
 	 * 
-	 * @param client Socket connection from a client.
+	 * @param client
+	 *            Socket connection from a client.
 	 */
 	private void serveClient(Socket client) {
 		try (Socket clientSocket = client) {
@@ -216,23 +219,25 @@ public class Server {
 		// with whitespace."
 		// "The field must not be the single character "*"."
 		// TODO AF Can someone re-check if every possible case is covered
-		
+
 		boolean errorFound = false;
 
 		ArrayList<String> stringValues = new ArrayList<>();
-		
+
 		stringValues.add(command.getSecret());
 		if (command.getResource() != null) {
-			String[] strings = { command.getResource().getName(), command.getResource().getDescription(), command.getResource().getURI(),
-					command.getResource().getChannel(), command.getResource().getOwner(), command.getResource().getEzserver() };
+			String[] strings = { command.getResource().getName(), command.getResource().getDescription(),
+					command.getResource().getURI(), command.getResource().getChannel(),
+					command.getResource().getOwner(), command.getResource().getEzserver() };
 			stringValues.addAll(Arrays.asList(strings));
 			if (command.getResource().getTags() != null) {
 				stringValues.addAll(command.getResource().getTags());
 			}
 		}
 		if (command.getResourceTemplate() != null) {
-			String[] strings = { command.getResourceTemplate().getName(), command.getResourceTemplate().getDescription(),
-					command.getResourceTemplate().getURI(), command.getResourceTemplate().getChannel(), command.getResourceTemplate().getOwner(),
+			String[] strings = { command.getResourceTemplate().getName(),
+					command.getResourceTemplate().getDescription(), command.getResourceTemplate().getURI(),
+					command.getResourceTemplate().getChannel(), command.getResourceTemplate().getOwner(),
 					command.getResourceTemplate().getEzserver() };
 			stringValues.addAll(Arrays.asList(strings));
 			if (command.getResourceTemplate().getTags() != null) {
@@ -297,13 +302,15 @@ public class Server {
 					response = buildErrorResponse("cannot publish resource - uri already exists in channel");
 				} else {
 					// SUCCESS
-					command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+					command.getResource()
+					.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 					this.resources.put(command.getResource(), command.getResource().getOwner());
 					response = buildSuccessResponse();
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				// sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+				// sendResponse(buildErrorResponse("invalid resource - invalid
+				// uri"), output);
 				response = buildErrorResponse("invalid resource - invalid uri");
 			}
 		}
@@ -317,51 +324,17 @@ public class Server {
 		if (command.getResourceTemplate() == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
 		} else {
-
 			sendResponse(buildSuccessResponse(), output);
 
+			// Count how many matching resources there are
 			int count = 0;
+			
 			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
 
-				// Query rules:
-				// "(The template channel equals (case sensitive) the resource
-				// channel AND
-				boolean equalChannel = resource.getChannel().equals(command.getResourceTemplate().getChannel());
-
-				// If the template contains an owner that is not "", then the
-				// candidate owner must equal it (case sensitive) AND
-				boolean equalOrNoOwner = command.getResourceTemplate().getOwner().isEmpty() ? true
-						: resource.getOwner().equals(command.getResourceTemplate().getOwner());
-
-				// Any tags present in the template also are present in the
-				// candidate (case insensitive) AND
-				boolean equalTags = command.getResourceTemplate().getTags().size() == 0 ? true
-						: resource.getTags().containsAll(command.getResourceTemplate().getTags());
-
-				// If the template contains a URI then the candidate URI matches
-				// (case sensitive) AND
-				boolean equalOrNoUri = command.getResourceTemplate().getURI().isEmpty() ? true
-						: resource.getURI().equals(command.getResourceTemplate().getURI());
-
-				// (The candidate name contains the template name as a substring
-				// (for non "" template name) OR
-				boolean nameIsSubstring = command.getResourceTemplate().getName().isEmpty() ? true
-						: resource.getName().equals(command.getResourceTemplate().getName());
-
-				// The candidate description contains the template description
-				// as a substring (for non "" template descriptions) OR
-				boolean descriptionIsSubstring = command.getResourceTemplate().getDescription().isEmpty()
-						? true : resource.getDescription().equals(command.getResourceTemplate().getDescription());
-
-				// The template description and name are both ""))"
-				boolean noDescriptionAndName = command.getResourceTemplate().getName().isEmpty()
-						&& command.getResourceTemplate().getDescription().isEmpty();
-
-				if (equalChannel && equalOrNoOwner && equalTags && equalOrNoUri
-						&& (nameIsSubstring || descriptionIsSubstring || noDescriptionAndName)) {
+				if (isMatchingResource(command.getResourceTemplate(), resource)) {
 					count++;
 
 					// "The server will never reveal the owner of a resource in
@@ -376,86 +349,93 @@ public class Server {
 				}
 			}
 
-			// Relay
+			// Relay query to all servers in server list
 			if (command.getRelay()) {
-				// "The owner and channel information in the original query are
-				// both set to "" in the forwarded query"
-				command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
-				command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
-
-				// "Relay field is set to false"
-				command.setRelay(false);
-
-				// Forward query to all servers in servers list
-				final CountDownLatch latch = new CountDownLatch(this.servers.size());
-				final ArrayList<Integer> countArray = new ArrayList<>();
-				for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
-					ServerInfo serverInfo = entry.getKey();
-
-					// Create a new thread for each ServerInfo object
-					Thread relayThread = new Thread("RelayHandler") {
-						@Override
-						public void run() {
-							Socket socket;
-							try {
-								socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
-								socket.setSoTimeout(TIME_OUT_LIMIT); // wait for
-								// 5
-								// seconds
-								DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
-								DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
-
-								sendString(command.toJson(), outToServer);
-
-								int resourceCount = 0;
-								boolean run = false;
-								do {
-									String fromServer = inFromServer.readUTF();
-									logger.debug("RECEIVED: " + fromServer);
-									if (fromServer.contains("success")) {
-										run = true;
-									}
-									if (fromServer.contains("resultSize")) {
-										run = false;
-									}
-									if (fromServer.contains("\"ezserver\":\"" + serverInfo.getHostname() + ":"
-											+ serverInfo.getPort() + "\"")) {
-										resourceCount++;
-										sendString(fromServer, output);
-									}
-
-								} while (run);
-
-								synchronized (countArray) {
-									countArray.add(resourceCount);
-								}
-								socket.close();
-							} catch (UnknownHostException e) {
-								logger.error(e.getClass().getName() + " " + e.getMessage());
-							} catch (IOException e) {
-								logger.error(e.getClass().getName() + " " + e.getMessage());
-							} finally {
-								latch.countDown();
-							}
-						}
-					};
-					relayThread.start();
-				}
-
-				try {
-					// Wait for all threads to be finished
-					latch.await();
-				} catch (InterruptedException e) {
-					logger.error(e.getClass().getName() + " " + e.getMessage());
-				}
-
-				for (int i : countArray) {
-					count += i;
-				}
+				count += processQueryRelay(command, output);
 			}
 
 			sendResponse(buildResultSizeResponse(count), output);
 		}
+	}
+
+	private int processQueryRelay(Command command, DataOutputStream output) {
+		int count = 0;
+
+		// "The owner and channel information in the original query are
+		// both set to "" in the forwarded query"
+		command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
+		command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
+
+		// "Relay field is set to false"
+		command.setRelay(false);
+
+		final CountDownLatch latch = new CountDownLatch(this.servers.size());
+		final ArrayList<Integer> countArray = new ArrayList<>();
+
+		// Forward query to all servers in servers list
+		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
+			ServerInfo serverInfo = entry.getKey();
+
+			// Create a new thread for each ServerInfo object
+			Thread relayThread = new Thread("RelayHandler") {
+				@Override
+				public void run() {
+					Socket socket;
+					try {
+						socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+						socket.setSoTimeout(TIME_OUT_LIMIT);
+						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
+						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+
+						sendString(command.toJson(), outToServer);
+
+						int resourceCount = 0;
+						boolean run = false;
+						do {
+							String fromServer = inFromServer.readUTF();
+							logger.debug("RECEIVED: " + fromServer);
+							if (fromServer.contains("success")) {
+								run = true;
+							}
+							if (fromServer.contains("resultSize")) {
+								run = false;
+							}
+							if (fromServer.contains(
+									"\"ezserver\":\"" + serverInfo.getHostname() + ":" + serverInfo.getPort() + "\"")) {
+								resourceCount++;
+								sendString(fromServer, output);
+							}
+
+						} while (run);
+
+						synchronized (countArray) {
+							countArray.add(resourceCount);
+						}
+						socket.close();
+					} catch (UnknownHostException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					} catch (IOException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					} finally {
+						latch.countDown();
+					}
+				}
+			};
+			relayThread.start();
+		}
+
+		try {
+			// Wait for all threads to be finished
+			latch.await();
+		} catch (InterruptedException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
+
+		for (int i : countArray) {
+			count += i;
+		}
+
+		return count;
 	}
 
 	private void processExchangeCommand(Command command, DataOutputStream output, ServerInfo source) {
@@ -479,18 +459,19 @@ public class Server {
 
 	private void processFetchCommand(Command command, DataOutputStream output, OutputStream os) {
 		logger.debug("Processing FETCH command");
-		
+
 		// Check for invalid resourceTemplate fields
 		if (command.getResourceTemplate() == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
-		} else if (command.getResourceTemplate().getURI() == null || command.getResourceTemplate().getURI().length() == 0
+		} else if (command.getResourceTemplate().getURI() == null
+				|| command.getResourceTemplate().getURI().length() == 0
 				|| command.getResourceTemplate().getURI().isEmpty()) {
 			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
 		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
 			sendResponse(buildErrorResponse("resource doesn't exist"), output);
 		} else {
 			int foundResources = 0;
-			
+
 			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
@@ -529,7 +510,7 @@ public class Server {
 					}
 				}
 			}
-			
+
 			sendResponse(buildResultSizeResponse(foundResources), output);
 		}
 	}
@@ -579,7 +560,8 @@ public class Server {
 								"invalid resource - uri does not point to a file on the local file system");
 					} else {
 						// SUCCESS
-						command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+						command.getResource()
+						.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
@@ -618,41 +600,51 @@ public class Server {
 		sendResponse(response, output);
 	}
 
-	/*
-	 * Methods for building a new success, error or result-size message
+	/**
+	 * 
+	 * @param template The template that states what values a resource should have
+	 * @param resource The resource that has to match the template
+	 * @return Whether or not the resource matches the template
 	 */
-	private Response buildSuccessResponse() {
-		Response response = new Response();
-		response.setToSuccess();
-		return response;
+	private boolean isMatchingResource(Resource template, Resource resource) {
+		// Query matching resource rules:
+		// "(The template channel equals (case sensitive) the resource
+		// channel AND
+		boolean equalChannel = resource.getChannel().equals(template.getChannel());
+
+		// If the template contains an owner that is not "", then the
+		// candidate owner must equal it (case sensitive) AND
+		boolean equalOrNoOwner = template.getOwner().isEmpty() ? true : resource.getOwner().equals(template.getOwner());
+
+		// Any tags present in the template also are present in the
+		// candidate (case insensitive) AND
+		boolean equalTags = template.getTags().size() == 0 ? true : resource.getTags().containsAll(template.getTags());
+
+		// If the template contains a URI then the candidate URI matches
+		// (case sensitive) AND
+		boolean equalOrNoUri = template.getURI().isEmpty() ? true : resource.getURI().equals(template.getURI());
+
+		// (The candidate name contains the template name as a substring
+		// (for non "" template name) OR
+		boolean nameIsSubstring = template.getName().isEmpty() ? true : resource.getName().equals(template.getName());
+
+		// The candidate description contains the template description
+		// as a substring (for non "" template descriptions) OR
+		boolean descriptionIsSubstring = template.getDescription().isEmpty() ? true
+				: resource.getDescription().equals(template.getDescription());
+
+		// The template description and name are both ""))"
+		boolean noDescriptionAndName = template.getName().isEmpty() && template.getDescription().isEmpty();
+
+		return equalChannel && equalOrNoOwner && equalTags && equalOrNoUri
+				&& (nameIsSubstring || descriptionIsSubstring || noDescriptionAndName);
 	}
 
-	private Response buildErrorResponse(String message) {
-		Response response = new Response();
-		response.setToError(message);
-		return response;
-	}
-	
-	private Response buildResultSizeResponse(int size) {
-		Response response = new Response();
-		response.setToResultSize(size);
-		return response;
-	}
-
-	private void sendResponse(Response response, DataOutputStream output) {
-		sendString(response.toJson(), output);
-	}
-
-	private void sendString(String string, DataOutputStream output) {
-		try {
-			output.writeUTF(string);
-			output.flush();
-			logger.debug("SENT: " + string);
-		} catch (IOException e) {
-			logger.error(e.getClass().getName() + " " + e.getMessage());
-		}
-	}
-
+	/**
+	 * Randomly selects a server from the server list and forwards the server list to it
+	 * @author alexandrafritzen
+	 *
+	 */
 	class ExchangeJob extends TimerTask {
 		private ServerInfo source;
 
@@ -694,7 +686,8 @@ public class Server {
 					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
 
 					// "... and initiates an EXCHANGE command with it."
-					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION, serversAsString };
+					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION,
+							serversAsString };
 					ClientArgs exchangeArgs = new ClientArgs(args);
 					Command command = new Command().buildExchange(exchangeArgs);
 
@@ -733,6 +726,44 @@ public class Server {
 		logger.debug("Removing server due to not being reachable or a communication error having occurred");
 		servers.remove(serverInfo);
 	}
+	
+	/*
+	 * Methods for building a new success, error or result-size message
+	 */
+	private Response buildSuccessResponse() {
+		Response response = new Response();
+		response.setToSuccess();
+		return response;
+	}
+
+	private Response buildErrorResponse(String message) {
+		Response response = new Response();
+		response.setToError(message);
+		return response;
+	}
+
+	private Response buildResultSizeResponse(int size) {
+		Response response = new Response();
+		response.setToResultSize(size);
+		return response;
+	}
+	
+	/*
+	 * Methods for sending a response, a string, and a file
+	 */
+	private void sendResponse(Response response, DataOutputStream output) {
+		sendString(response.toJson(), output);
+	}
+
+	private void sendString(String string, DataOutputStream output) {
+		try {
+			output.writeUTF(string);
+			output.flush();
+			logger.debug("SENT: " + string);
+		} catch (IOException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
+	}
 
 	/**
 	 * 
@@ -742,12 +773,12 @@ public class Server {
 	 */
 	private void sendFile(File file, OutputStream out) throws IOException {
 		FileInputStream in = new FileInputStream(file);
-		byte[] bytes = new byte[BUF_SIZE];		
+		byte[] bytes = new byte[BUF_SIZE];
 		int count;
 		// this will read up to bytes.length bytes from the file
-		while((count = in.read(bytes)) > 0) {
+		while ((count = in.read(bytes)) > 0) {
 			// send exactly count bytes to the stream, i.e., to the client
-			out.write(bytes,0,count);
+			out.write(bytes, 0, count);
 		}
 		in.close();
 	}

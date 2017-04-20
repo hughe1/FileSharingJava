@@ -53,7 +53,7 @@ public class Client {
 	 */
 	public void run() {
 		try {
-			logger.info("Connecting to host "+serverInfo.getHostname()+" at port "+serverInfo.getPort());
+			logger.info("Connecting to host " + serverInfo.getHostname() + " at port " + serverInfo.getPort());
 			this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 			this.socket.setSoTimeout(TIME_OUT_LIMIT); // wait for TIME_OUT_LIMIT seconds
 			
@@ -64,15 +64,15 @@ public class Client {
 
 			// block call, wait for client response
 			String fromServer = inFromServer.readUTF();
+			logger.debug("RECEIVED: " + fromServer);
 			if(fromServer.contains("error")) {
 				// onError
 				Response response = new Response().fromJson(fromServer);
-				logger.error(response.toJson());
+				logger.error("Error: " + response.getErrorMessage());
 			}
 			else if(fromServer.contains("success")) {
 				// onSuccess
-				Response response = new Response().fromJson(fromServer);
-				logger.info(response.toJson());
+				logger.info("Success!");
 				this.onSuccess(command,inFromServer);
 			}
 			else {
@@ -100,10 +100,10 @@ public class Client {
 	private void submitCommand(Command command, DataOutputStream outToServer) 
 			throws IOException {
 		outToServer.writeUTF(command.toJson());
-		logger.info("Sending "+command.getCommand()+" command... ");
+		logger.info("Sending " + command.getCommand() + " command...");
 		outToServer.flush();
-		logger.info(command.getCommand()+" command sent. Waiting for response.. ");
 		logger.debug("SENT: " + command.toJson());
+		logger.info(command.getCommand() + " command sent. Waiting for response..");
 	}
 
 	/**
@@ -182,7 +182,7 @@ public class Client {
 		String fileName = strings[strings.length - 1];
 		
 		this.receiveFile(fileName, resource.getResourceSize());
-		this.logger.info(inFromServer.readUTF());
+		this.logger.debug("RECEIVED: " + inFromServer.readUTF());
 	}
 	
 	/**
@@ -196,14 +196,15 @@ public class Client {
 	private void processQuery(DataInputStream inFromServer) throws 
 			SocketTimeoutException, IOException {
 		boolean run = true;
-		while(run) {
+		while (run) {
 			String fromServer = inFromServer.readUTF();
-			if(fromServer.contains("resultSize")) {
+			logger.debug("RECEIVED: " + fromServer);
+			if (fromServer.contains("resultSize")) {
+				Response response = new Response().fromJson(fromServer);
 				run = false;
-				logger.info("RECEIVED: " + fromServer);
-			}
-			else {
-				logger.info("RECEIVED: " + fromServer);
+				logger.info("Query finished. Found " + response.getResultSize() +  " results.");
+			} else {
+				logger.info(fromServer);
 			}			
 		}
 	}
@@ -217,6 +218,7 @@ public class Client {
 	 * @throws IOException
 	 */
 	private void receiveFile(String fileName, long fileSize) throws IOException {
+		logger.info("Downloading " + fileName);
 		InputStream in = this.socket.getInputStream();
 		FileOutputStream out = new FileOutputStream(fileName);
 		byte[] bytes  = new byte [BUF_SIZE];		
@@ -224,6 +226,7 @@ public class Client {
 		long bytesToRead = 0;
 		// stop reading only when have read bytes equal to the fileSize
 		while(totalRead < fileSize) {
+			logger.info("...");
 			// determine how many more bytes to read
 			bytesToRead = Math.min(bytes.length, fileSize-totalRead);
 			// read bytesToRead from the InputStream
@@ -231,9 +234,10 @@ public class Client {
 			totalRead += count;
 			// write bytes to file
 			out.write(bytes,0,count);
-			this.logger.debug("downloaded: " + count + " bytes, remaining: " + 
+			this.logger.debug("Downloaded: " + count + " bytes, remaining: " + 
 					(fileSize - totalRead) + " bytes");
 		}
 		out.close();
+		logger.info("Download complete!");
 	}
 }
