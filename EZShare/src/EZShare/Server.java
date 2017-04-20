@@ -59,14 +59,14 @@ public class Server {
 	}
 
 	/**
-	 * Examines the command line arguments and prints useful debug info
-	 * when the server is deployed.
+	 * Examines the command line arguments and prints useful debug info when the
+	 * server is deployed.
 	 */
 	private void printDebugInfo() {
 		if (serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
-			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
+			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
-			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
+			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
 		}
 		logger = LogManager.getRootLogger();
 		logger.debug("Debugger enabled");

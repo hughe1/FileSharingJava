@@ -121,9 +121,9 @@ public class Client {
 		// Configure logger
 		System.out.println(System.getProperty("user.dir"));
 		if (this.clientArgs.hasOption(ClientArgs.DEBUG_OPTION)) {
-			System.setProperty("log4j.configurationFile", "../logging-config-debug.xml");
+			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
-			System.setProperty("log4j.configurationFile", "../logging-config-default.xml");
+			System.setProperty("log4j.configurationFile", "logging-config-default.xml");
 		}
 		logger = LogManager.getRootLogger();
 		logger.debug("Debugger enabled");
