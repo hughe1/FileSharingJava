@@ -74,7 +74,7 @@ public class ServerArgs extends ArgsManager {
 	 * @return
 	 */
 	public String getSafeHost() {
-		if (!this.hasOption(ClientArgs.HOST_OPTION)) {
+		if (!this.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
 			if (DEFAULT_HOST.equals("")) {
 				// "The default advertised host name will be the operating system supplied hostname."
 				try {
@@ -87,7 +87,7 @@ public class ServerArgs extends ArgsManager {
 			}
 			return DEFAULT_HOST;
 		}
-		return this.getOptionValue(ClientArgs.HOST_OPTION);
+		return this.getOptionValue(ServerArgs.ADVERTISED_HOST_NAME_OPTION);
 	}
 	
 	/**

@@ -194,12 +194,16 @@ public class Command extends JsonModel {
 		for (String token : addresses) {
 			// split by ":"
 			String[] hostPortToken = token.split(":");
-			// get the host in position 0
-			String host = hostPortToken[0];
-			// get the port in position 1
-			int port = Integer.parseInt(hostPortToken[1]);
-			// add a new ServerInfo object into the list
-			this.serverList.add(new ServerInfo(host, port));
+			
+			// Check for wrongly formatted host:port strings
+			if (hostPortToken.length > 1) {
+				// get the host in position 0
+				String host = hostPortToken[0];
+				// get the port in position 1
+				int port = Integer.parseInt(hostPortToken[1]);
+				// add a new ServerInfo object into the list
+				this.serverList.add(new ServerInfo(host, port));
+			}
 		}
 	}
 	

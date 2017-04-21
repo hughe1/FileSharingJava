@@ -2,6 +2,7 @@ package EZShare;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -119,7 +120,6 @@ public class Client {
 	 */
 	private void configLogger() {
 		// Configure logger
-		System.out.println(System.getProperty("user.dir"));
 		if (this.clientArgs.hasOption(ClientArgs.DEBUG_OPTION)) {
 			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
@@ -225,8 +225,8 @@ public class Client {
 		int count, totalRead = 0;
 		long bytesToRead = 0;
 		// stop reading only when have read bytes equal to the fileSize
+		logger.info("...");
 		while(totalRead < fileSize) {
-			logger.info("...");
 			// determine how many more bytes to read
 			bytesToRead = Math.min(bytes.length, fileSize-totalRead);
 			// read bytesToRead from the InputStream
@@ -238,6 +238,9 @@ public class Client {
 					(fileSize - totalRead) + " bytes");
 		}
 		out.close();
+
+		File file = new File(fileName);
 		logger.info("Download complete!");
+		logger.info("Your file is located at " + file.getAbsolutePath());
 	}
 }

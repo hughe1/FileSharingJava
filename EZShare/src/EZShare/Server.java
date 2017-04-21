@@ -90,8 +90,11 @@ public class Server {
 	 */
 	public void listen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
-
-		try (ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort())) {
+						
+		try {
+			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
+			ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort(), 0, inetAddress);
+			
 			logger.info("Listening for request...");
 			this.setExchangeTimer();
 
