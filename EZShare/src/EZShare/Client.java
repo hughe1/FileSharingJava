@@ -23,7 +23,7 @@ import org.apache.logging.log4j.Logger;
  */
 public class Client {
 
-	public static final int TIME_OUT_LIMIT = 5000;
+	public static final int TIME_OUT_LIMIT = 10000;
 	public static final int BUF_SIZE = 1024 * 4;
 	private Logger logger;
 	private ClientArgs clientArgs;

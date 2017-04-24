@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import javax.net.ServerSocketFactory;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -362,6 +364,7 @@ public class Server {
 	}
 
 	private int processQueryRelay(Command command, DataOutputStream output) {
+		logger.debug("Relaying query...");
 		int count = 0;
 
 		// "The owner and channel information in the original query are
@@ -383,10 +386,11 @@ public class Server {
 			Thread relayThread = new Thread("RelayHandler") {
 				@Override
 				public void run() {
-					Socket socket;
 					try {
-						socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
-						socket.setSoTimeout(TIME_OUT_LIMIT);
+						Socket socket = new Socket();
+						SocketAddress socketAddress = new InetSocketAddress(serverInfo.getHostname(), serverInfo.getPort());
+						socket.connect(socketAddress, TIME_OUT_LIMIT);
+
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
@@ -408,7 +412,6 @@ public class Server {
 								resourceCount++;
 								sendString(fromServer, output);
 							}
-
 						} while (run);
 
 						synchronized (countArray) {
@@ -417,8 +420,10 @@ public class Server {
 						socket.close();
 					} catch (UnknownHostException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
+						removeServer(serverInfo);
 					} catch (IOException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
+						removeServer(serverInfo);
 					} finally {
 						latch.countDown();
 					}
@@ -472,49 +477,59 @@ public class Server {
 			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
 		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
 			sendResponse(buildErrorResponse("resource doesn't exist"), output);
+		} else if (command.getResourceTemplate().getURI() == null
+				|| command.getResourceTemplate().getURI().length() == 0
+				|| command.getResourceTemplate().getURI().isEmpty()) {
+			// "The URI must be present, ..."
+			sendResponse(buildErrorResponse("invalid resource - missing uri"), output);
 		} else {
-			int foundResources = 0;
+			try {
+				URI uri = new URI(command.getResourceTemplate().getURI());
+				if (!uri.getScheme().equals("file")) {
+					sendResponse(buildErrorResponse("invalid resource - uri must be a file scheme"), output);
+				} else {
+					int foundResources = 0;
 
-			// TODO AF Is there a better way than iterating over the whole map?
-			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
-				Resource resource = entry.getKey();
-				String owner = entry.getValue();
-				if (resource.getChannel().equals(command.getResourceTemplate().getChannel())
-						&& resource.getURI().equals(command.getResourceTemplate().getURI())) {
-					sendResponse(buildSuccessResponse(), output);
+					// TODO AF Is there a better way than iterating over the
+					// whole map?
+					for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
+						Resource resource = entry.getKey();
+						String owner = entry.getValue();
+						if (resource.getChannel().equals(command.getResourceTemplate().getChannel())
+								&& resource.getURI().equals(command.getResourceTemplate().getURI())) {
+							sendResponse(buildSuccessResponse(), output);
 
-					try {
-						URI uri = new URI(resource.getURI());
-						File file = new File(uri);
-						int length = (int) file.length();
+							File file = new File(uri);
+							int length = (int) file.length();
 
-						resource.setResourceSize(length);
+							resource.setResourceSize(length);
 
-						// "The server will never reveal the owner of a resource
-						// in a response. If a resource has an owner then it
-						// will be replaced with the "*" character."
-						resource.setOwner("*");
+							// "The server will never reveal the owner of a
+							// resource
+							// in a response. If a resource has an owner then it
+							// will be replaced with the "*" character."
+							resource.setOwner("*");
 
-						sendString(resource.toJson(), output);
+							sendString(resource.toJson(), output);
 
-						// Reset owner
-						resource.setOwner(owner);
+							// Reset owner
+							resource.setOwner(owner);
 
-						this.sendFile(file, os);
+							this.sendFile(file, os);
 
-						foundResources++;
-						break;
-					} catch (URISyntaxException e) {
-						logger.error(e.getClass().getName() + " " + e.getMessage());
-						sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
-					} catch (IOException e) {
-						logger.error(e.getClass().getName() + " " + e.getMessage());
-						sendResponse(buildErrorResponse("invalid resource - unable to send file"), output);
+							foundResources++;
+							break;
+						}
 					}
+					sendResponse(buildResultSizeResponse(foundResources), output);
 				}
+			} catch (URISyntaxException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+			} catch (IOException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+				sendResponse(buildErrorResponse("invalid resource - unable to send file"), output);
 			}
-
-			sendResponse(buildResultSizeResponse(foundResources), output);
 		}
 	}
 
@@ -595,9 +610,15 @@ public class Server {
 			// Resource must exist
 			response = buildErrorResponse("cannot remove resource - resource does not exist");
 		} else {
-			// SUCCESS
-			this.resources.remove(command.getResource());
-			response = buildSuccessResponse();
+			String owner = this.resources.get(command.getResource());
+			if (!owner.equals(command.getResource().getOwner())) {
+				// Resource must match primary key
+				response = buildErrorResponse("cannot remove resource - wrong owner");
+			} else {
+				// SUCCESS
+				this.resources.remove(command.getResource());
+				response = buildSuccessResponse();
+			}
 		}
 
 		sendResponse(response, output);
@@ -694,10 +715,11 @@ public class Server {
 					ClientArgs exchangeArgs = new ClientArgs(args);
 					Command command = new Command().buildExchange(exchangeArgs);
 
-					Socket socket;
 					try {
-						socket = new Socket(randomServer.getHostname(), randomServer.getPort());
-						socket.setSoTimeout(TIME_OUT_LIMIT); // wait for seconds
+						Socket socket = new Socket();
+						SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(), randomServer.getPort());
+						socket.connect(socketAddress, TIME_OUT_LIMIT);
+
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
@@ -726,10 +748,10 @@ public class Server {
 	}
 
 	private void removeServer(ServerInfo serverInfo) {
-		logger.debug("Removing server due to not being reachable or a communication error having occurred");
+		logger.debug("Removing server " + serverInfo.toString() + " from server list");
 		servers.remove(serverInfo);
 	}
-	
+
 	/*
 	 * Methods for building a new success, error or result-size message
 	 */

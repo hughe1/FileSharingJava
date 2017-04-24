@@ -1,0 +1,223 @@
+Server used: sunrise.cis.unimelb.edu.au:3780
+
+Tests Completed: 
+
+** PUBLISH **
+
+java -cp ezshare.jar EZShare.Client -publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK
+
+java -cp ezshare.jar EZShare.Client -publish -channel ds -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK
+
+java -cp ezshare.jar EZShare.Client -publish -channel ch -owner a -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK
+
+java -cp ezshare.jar EZShare.Client -publish -channel ch -owner b -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"cannot publish resource - uri already exists in channel"}
+OK
+
+
+** REMOVE **
+
+java -cp ezshare.jar EZShare.Client -remove -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK
+
+java -cp ezshare.jar EZShare.Client -remove -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"invalid resource - missing uri"}
+OK
+
+java -cp ezshare.jar EZShare.Client -remove -channel ch -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"cannot remove resource - wrong owner"}
+OK
+
+java -cp ezshare.jar EZShare.Client -remove -uri http://a.v.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"cannot remove resource - resource does not exist"}
+OK
+
+
+** SHARE **
+java -cp ezshare.jar EZShare.Client -share -uri file:///photo.jpg -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"missing resource and/or secret"}
+OK
+
+java -cp ezshare.jar EZShare.Client -share -uri file:///test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1557978a-7c7f-4c03-964b-ca9c677de3de
+RECEIVED: {"response":"error","errorMessage":"invalid resource - uri does not point to a file on the local file system"}
+OK
+
+java -cp ezshare.jar EZShare.Client -share -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1557978a-7c7f-4c03-964b-ca9c677de3de
+RECEIVED: {"response":"success"}
+OK
+
+
+** QUERY **
+Setup:
+java -cp ezshare.jar EZShare.Client -publish -channel 1 -owner a -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -channel 2 -owner b -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name ab -tags a,b -uri http://a.b.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name wiki -tags b -uri http://www.wikipedia.com -host 130.56.251.227 -port 2222 -debug
+
+java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 2222 -debug 
+24/04/2017 13:28:28.175 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:28:28.176 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 13:28:28.183 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.183 - [EZShare.Client.main] - [INFO] - {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.184 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.184 - [EZShare.Client.main] - [INFO] - {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.185 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"*","ezserver":"130.56.251.227:2222","resourceSize":10}
+24/04/2017 13:28:28.185 - [EZShare.Client.main] - [INFO] - {"name":"","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"*","ezserver":"130.56.251.227:2222","resourceSize":10}
+24/04/2017 13:28:28.185 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.186 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:28:28.186 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":4}
+24/04/2017 13:28:28.189 - [EZShare.Client.main] - [INFO] - Query finished. Found 4 results.
+OK
+
+java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 2222 -debug -tags a
+24/04/2017 13:29:24.208 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:29:24.209 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 13:29:24.209 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:29:24.210 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 13:29:24.212 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+24/04/2017 13:29:24.219 - [EZShare.Client.main] - [INFO] - Query finished. Found 1 results.
+OK
+
+** FETCH ** 
+Setup 
+java -cp ezshare.jar EZShare.Client -share -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 83d0a3dc-50c4-43a8-82db-5f28365925ef
+java -cp ezshare.jar EZShare.Client -publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+
+java -cp ezshare.jar EZShare.Client -fetch -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"invalid resourceTemplate - missing uri"}
+OK 
+
+java -cp ezshare.jar EZShare.Client -fetch -uri idonotexist -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"resource doesn\u0027t exist"}
+OK
+
+java -cp ezshare.jar EZShare.Client -fetch -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"error","errorMessage":"invalid resource - uri must be a file scheme"}
+OK
+
+java -cp ezshare.jar EZShare.Client -fetch -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug
+24/04/2017 13:45:14.847 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:45:14.848 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 13:45:14.851 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"*","ezserver":"130.56.251.227:2222","resourceSize":10}
+24/04/2017 13:45:14.855 - [EZShare.Client.main] - [INFO] - Downloading test_file.txt
+24/04/2017 13:45:14.856 - [EZShare.Client.main] - [INFO] - ...
+24/04/2017 13:45:14.856 - [EZShare.Client.main] - [DEBUG] - Downloaded: 10 bytes, remaining: 0 bytes
+24/04/2017 13:45:14.857 - [EZShare.Client.main] - [INFO] - Download complete!
+24/04/2017 13:45:14.858 - [EZShare.Client.main] - [INFO] - Your file is located at /Users/alexandrafritzen/Documents/test_file.txt
+24/04/2017 13:45:14.858 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+OK
+
+** EXCHANGE ** 
+java -cp ezshare.jar EZShare.Client -exchange -servers 115.146.85.165:3780,115.146.85.24:3780 -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK 
+
+** QUERY RELAY **
+Setup
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -channel 1 -owner a -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -channel 2 -owner b -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name ab -tags a,b -uri http://a.b.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name wiki -tags b -uri http://www.wikipedia.com -host 130.56.251.227 -port 2222 -debug
+
+java -cp ezshare.jar EZShare.Client -query -debug
+24/04/2017 14:53:16.884 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 14:53:16.888 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 14:53:16.965 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+24/04/2017 14:53:16.965 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+24/04/2017 14:53:16.966 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+24/04/2017 14:53:16.972 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 14:53:16.972 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 14:53:17.025 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 14:53:17.026 - [EZShare.Client.main] - [INFO] - {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 14:53:17.027 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 14:53:17.027 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+24/04/2017 14:53:17.029 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":2}
+24/04/2017 14:53:17.033 - [EZShare.Client.main] - [INFO] - Query finished. Found 2 results.
+OK
+
+** ALL EXAMPLES ON PROJECT SPECS **
+Setup 
+java -cp ezshare.jar EZShare.Server
+
+java -cp ezshare.jar EZShare.Client -query -channel myprivatechannel -debug
+24/04/2017 13:50:07.855 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 13:50:07.859 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 13:50:07.951 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+24/04/2017 13:50:07.951 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"myprivatechannel","owner":"","ezserver":""}}
+24/04/2017 13:50:07.952 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+24/04/2017 13:50:08.057 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:50:08.058 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 13:50:08.058 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":0}
+24/04/2017 13:50:08.062 - [EZShare.Client.main] - [INFO] - Query finished. Found 0 results.
+OK
+
+java -cp ezshare.jar EZShare.Client -exchange -servers 115.146.85.165:3780,115.146.85.24:3780 -debug
+24/04/2017 13:50:49.804 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 13:50:49.809 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 13:50:49.898 - [EZShare.Client.main] - [INFO] - Sending EXCHANGE command...
+24/04/2017 13:50:49.899 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"EXCHANGE","serverList":[{"hostname":"115.146.85.165","port":3780},{"hostname":"115.146.85.24","port":3780}]}
+24/04/2017 13:50:49.900 - [EZShare.Client.main] - [INFO] - EXCHANGE command sent. Waiting for response..
+24/04/2017 13:50:49.943 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:50:49.944 - [EZShare.Client.main] - [INFO] - Success!
+OK
+
+java -cp ezshare.jar EZShare.Client -fetch -channel myprivatechannel -uri file:///Users/alexandrafritzen/test.txt -debug
+24/04/2017 14:29:57.898 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 14:29:57.902 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 14:29:57.983 - [EZShare.Client.main] - [INFO] - Sending FETCH command...
+24/04/2017 14:29:57.984 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"FETCH","resourceTemplate":{"name":"","tags":[],"description":"","uri":"file:///Users/alexandrafritzen/test.txt","channel":"myprivatechannel","owner":"","ezserver":""}}
+24/04/2017 14:29:57.985 - [EZShare.Client.main] - [INFO] - FETCH command sent. Waiting for response..
+24/04/2017 14:29:57.989 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 14:29:57.990 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 14:29:57.991 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"EZShare JAR","tags":["jar"],"description":"The jar file for EZShare. Use with caution.","uri":"file:///Users/alexandrafritzen/test.txt","channel":"myprivatechannel","owner":"*","ezserver":"Alexandras-MacBook-Air.local:3780","resourceSize":28}
+24/04/2017 14:29:57.996 - [EZShare.Client.main] - [INFO] - Downloading test.txt
+24/04/2017 14:29:57.997 - [EZShare.Client.main] - [INFO] - ...
+24/04/2017 14:29:57.998 - [EZShare.Client.main] - [DEBUG] - Downloaded: 28 bytes, remaining: 0 bytes
+24/04/2017 14:29:57.999 - [EZShare.Client.main] - [INFO] - Download complete!
+24/04/2017 14:29:57.999 - [EZShare.Client.main] - [INFO] - Your file is located at /Users/alexandrafritzen/Documents/test.txt
+24/04/2017 14:29:57.999 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+OK
+
+java -cp ezshare.jar EZShare.Client -share -uri file:///Users/alexandrafritzen/test.txt -name "EZShare JAR" -description "The jar file for EZShare. Use with caution." -tags jar -channel myprivatechannel -owner aaron010 -secret f7f5ca8e-d6a2-40ef-aaaa-4ddc9116bddb -debug
+24/04/2017 14:29:29.819 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 14:29:29.823 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 14:29:29.896 - [EZShare.Client.main] - [INFO] - Sending SHARE command...
+24/04/2017 14:29:29.896 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"SHARE","secret":"f7f5ca8e-d6a2-40ef-aaaa-4ddc9116bddb","resource":{"name":"EZShare JAR","tags":["jar"],"description":"The jar file for EZShare. Use with caution.","uri":"file:///Users/alexandrafritzen/test.txt","channel":"myprivatechannel","owner":"aaron010","ezserver":""}}
+24/04/2017 14:29:29.903 - [EZShare.Client.main] - [INFO] - SHARE command sent. Waiting for response..
+24/04/2017 14:29:29.904 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 14:29:29.905 - [EZShare.Client.main] - [INFO] - Success!
+OK
+
+java -cp ezshare.jar EZShare.Client -publish -name "Unimelb website" -description "The main page for the University of Melbourne" -uri http://www.unimelb.edu.au -tags web,html -debug
+24/04/2017 13:51:25.719 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+24/04/2017 13:51:25.724 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 13:51:25.789 - [EZShare.Client.main] - [INFO] - Sending PUBLISH command...
+24/04/2017 13:51:25.789 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"PUBLISH","resource":{"name":"Unimelb website","tags":["web","html"],"description":"The main page for the University of Melbourne","uri":"http://www.unimelb.edu.au","channel":"","owner":"","ezserver":""}}
+24/04/2017 13:51:25.790 - [EZShare.Client.main] - [INFO] - PUBLISH command sent. Waiting for response..
+24/04/2017 13:51:25.794 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+24/04/2017 13:51:25.795 - [EZShare.Client.main] - [INFO] - Success!
+OK
+
+java -cp ezshare.jar EZShare.Client -query
+24/04/2017 14:27:15.065 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 14:27:15.142 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+24/04/2017 14:27:15.149 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+24/04/2017 14:27:15.151 - [EZShare.Client.main] - [INFO] - Success!
+24/04/2017 14:27:20.159 - [EZShare.Client.main] - [INFO] - Query finished. Found 0 results.
+OK
+
+java -cp ezshare.jar EZShare.Client -remove -uri http://www.unimelb.edu.au
+24/04/2017 14:27:54.658 - [EZShare.Client.main] - [INFO] - Connecting to host Alexandras-MacBook-Air.local at port 3780
+24/04/2017 14:27:54.742 - [EZShare.Client.main] - [INFO] - Sending REMOVE command...
+24/04/2017 14:27:54.751 - [EZShare.Client.main] - [INFO] - REMOVE command sent. Waiting for response..
+24/04/2017 14:27:54.752 - [EZShare.Client.main] - [INFO] - Success!
+OK
