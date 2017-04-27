@@ -34,8 +34,10 @@ public class ClientArgs extends ArgsManager {
 	public static final String SHARE_OPTION = "share";
 	public static final String EXCHANGE_OPTION = "exchange";
 	public static final String FETCH_OPTION = "fetch";
+	public static final String RELAY_OPTION = "relay";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final Boolean DEFAULT_RELAY = false;
 	
 	/**
 	 * The static initializer adds all commands/options known to an EZShare client 
@@ -63,6 +65,7 @@ public class ClientArgs extends ArgsManager {
 			options.addOption(SHARE_OPTION, false, "share resource on server");
 			options.addOption(TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
 			options.addOption(URI_OPTION, true, "resource URI");
+			options.addOption(RELAY_OPTION, true, "relay");
 		//}
 	}
 	
@@ -163,4 +166,17 @@ public class ClientArgs extends ArgsManager {
 		return this.getOptionValue(HOST_OPTION);
 	}
 
+	/**
+	 * The getSafeRelay method returns the relay value specified in the command-line
+	 * arguments
+	 * @return the relay value specified in the client arguments
+	 */
+	public Boolean getSafeRelay() {
+		if (!this.hasOption(RELAY_OPTION)) {
+			// Relay default set to false
+			return DEFAULT_RELAY;
+		}
+		return Boolean.valueOf(this.getOptionValue(RELAY_OPTION));
+	}
+	
 }

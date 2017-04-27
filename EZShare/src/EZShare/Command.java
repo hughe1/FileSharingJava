@@ -90,7 +90,7 @@ public class Command extends JsonModel {
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		this.command = QUERY_COMMAND;
-		this.relay = true; //all client initiated queries have relay set to true
+		this.relay = clientArgs.getSafeRelay();
 		this.resourceTemplate = new Resource(clientArgs);
 		return this;
 	}
