@@ -37,7 +37,7 @@ public class ClientArgs extends ArgsManager {
 	public static final String RELAY_OPTION = "relay";
 
 	public static final Integer DEFAULT_PORT = 3780;
-	public static final Boolean DEFAULT_RELAY = false;
+	public static final Boolean DEFAULT_RELAY = true;
 	
 	/**
 	 * The static initializer adds all commands/options known to an EZShare client 
