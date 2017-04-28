@@ -92,11 +92,11 @@ public class Server {
 	 */
 	public void listen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
-						
+
 		try {
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 			ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort(), 0, inetAddress);
-			
+
 			logger.info("Listening for request...");
 			this.setExchangeTimer();
 
@@ -176,41 +176,43 @@ public class Server {
 			DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
 
 			String request = input.readUTF();
-			Command command = (new Command()).fromJson(request);
-			logger.debug("RECEIVED: " + command.toJson());
+			logger.debug("RECEIVED: " + request);
 
-			if (!parseCommandForErrors(command, output)) {
+			// Test if request is JSON valid
+			Command command = getSafeCommand(request);
 
-				switch (command.getCommand()) {
-				case Command.QUERY_COMMAND:
-					processQueryCommand(command, output);
-					break;
-				case Command.FETCH_COMMAND:
-					processFetchCommand(command, output, clientSocket.getOutputStream());
-					break;
-				case Command.EXCHANGE_COMMAND:
-					processExchangeCommand(command, output,
-							new ServerInfo(client.getInetAddress().getHostName(), client.getPort()));
-					break;
-				case Command.PUBLISH_COMMAND:
-					processPublishCommand(command, output);
-					break;
-				case Command.SHARE_COMMAND:
-					processShareCommand(command, output);
-					break;
-				case Command.REMOVE_COMMAND:
-					processRemoveCommand(command, output);
-					break;
-				case Command.INVALID_COMMAND:
-					processInvalidCommand(command, output);
-					break;
-				default:
-					processMissingOrInvalidCommand(command, output);
-					break;
+			if (command == null) {
+				processMissingOrInvalidCommand(output);
+			} else {
+				if (!parseCommandForErrors(command, output)) {
+					switch (command.getCommand()) {
+					case Command.QUERY_COMMAND:
+						processQueryCommand(command, output);
+						break;
+					case Command.FETCH_COMMAND:
+						processFetchCommand(command, output, clientSocket.getOutputStream());
+						break;
+					case Command.EXCHANGE_COMMAND:
+						processExchangeCommand(command, output,
+								new ServerInfo(client.getInetAddress().getHostName(), client.getPort()));
+						break;
+					case Command.PUBLISH_COMMAND:
+						processPublishCommand(command, output);
+						break;
+					case Command.SHARE_COMMAND:
+						processShareCommand(command, output);
+						break;
+					case Command.REMOVE_COMMAND:
+						processRemoveCommand(command, output);
+						break;
+					default:
+						processInvalidCommand(output);
+						break;
+					}
 				}
-			}
 
-			clientSocket.close();
+				clientSocket.close();
+			}
 
 		} catch (SocketTimeoutException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
@@ -219,63 +221,78 @@ public class Server {
 		}
 	}
 
+	private Command getSafeCommand(String request) {
+		try {
+			Command command = (new Command()).fromJson(request);
+			return command;
+		} catch (com.google.gson.JsonSyntaxException ex) {
+			return null;
+		}
+	}
+
 	private boolean parseCommandForErrors(Command command, DataOutputStream output) {
 		// "String values must not contain the "\0" character, nor start or end
 		// with whitespace."
-		// "The field must not be the single character "*"."
-		// TODO AF Can someone re-check if every possible case is covered
+		// "The owner field must not be the single character "*"."
 
 		boolean errorFound = false;
 
-		ArrayList<String> stringValues = new ArrayList<>();
+		if (command.getCommand() == null) {
+			processMissingOrInvalidCommand(output);
+			errorFound = true;
+		} else {
+			ArrayList<String> stringValues = new ArrayList<>();
 
-		stringValues.add(command.getSecret());
-		if (command.getResource() != null) {
-			String[] strings = { command.getResource().getName(), command.getResource().getDescription(),
-					command.getResource().getURI(), command.getResource().getChannel(),
-					command.getResource().getOwner(), command.getResource().getEzserver() };
-			stringValues.addAll(Arrays.asList(strings));
-			if (command.getResource().getTags() != null) {
-				stringValues.addAll(command.getResource().getTags());
+			stringValues.add(command.getSecret());
+			if (command.getResource() != null) {
+				String[] strings = { command.getResource().getName(), command.getResource().getDescription(),
+						command.getResource().getURI(), command.getResource().getChannel(),
+						command.getResource().getOwner(), command.getResource().getEzserver() };
+				stringValues.addAll(Arrays.asList(strings));
+				if (command.getResource().getTags() != null) {
+					stringValues.addAll(command.getResource().getTags());
+				}
 			}
-		}
-		if (command.getResourceTemplate() != null) {
-			String[] strings = { command.getResourceTemplate().getName(),
-					command.getResourceTemplate().getDescription(), command.getResourceTemplate().getURI(),
-					command.getResourceTemplate().getChannel(), command.getResourceTemplate().getOwner(),
-					command.getResourceTemplate().getEzserver() };
-			stringValues.addAll(Arrays.asList(strings));
-			if (command.getResourceTemplate().getTags() != null) {
-				stringValues.addAll(command.getResourceTemplate().getTags());
+			if (command.getResourceTemplate() != null) {
+				String[] strings = { command.getResourceTemplate().getName(),
+						command.getResourceTemplate().getDescription(), command.getResourceTemplate().getURI(),
+						command.getResourceTemplate().getChannel(), command.getResourceTemplate().getOwner(),
+						command.getResourceTemplate().getEzserver() };
+				stringValues.addAll(Arrays.asList(strings));
+				if (command.getResourceTemplate().getTags() != null) {
+					stringValues.addAll(command.getResourceTemplate().getTags());
+				}
 			}
-		}
 
-		for (String value : stringValues) {
-			if (value == null) {
-				// Do nothing
-			} else if (value.equals("*")) {
-				sendResponse(buildErrorResponse("String values cannot be *"), output);
+			for (String value : stringValues) {
+				if (value == null) {
+					// Do nothing
+				} else if (value != value.trim()) {
+					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+					errorFound = true;
+					break;
+				} else if (value.contains("\0")) {
+					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+					errorFound = true;
+					break;
+				}
+			}
+
+			if ((command.getResourceTemplate() != null && command.getResourceTemplate().getOwner() != null && command.getResourceTemplate().getOwner().equals("*"))
+					|| (command.getResource() != null && command.getResource().getOwner() != null && command.getResource().getOwner().equals("*"))) {
+				sendResponse(buildErrorResponse("invalid resource"), output);
 				errorFound = true;
-				break;
-			} else if (value != value.trim()) {
-				sendResponse(buildErrorResponse("String values cannot start or end with whitespace(s)"), output);
-				errorFound = true;
-				break;
-			} else if (value.contains("\0")) {
-				sendResponse(buildErrorResponse("String values cannot contain \0"), output);
-				errorFound = true;
-				break;
 			}
 		}
 
 		return errorFound;
 	}
 
-	private void processInvalidCommand(Command command, DataOutputStream output) {
+	private void processInvalidCommand(DataOutputStream output) {
 		sendResponse(buildErrorResponse("invalid command"), output);
 	}
 
-	private void processMissingOrInvalidCommand(Command command, DataOutputStream output) {
+	private void processMissingOrInvalidCommand(DataOutputStream output) {
 		sendResponse(buildErrorResponse("missing or incorrect type for command"), output);
 	}
 
@@ -289,23 +306,27 @@ public class Server {
 			response = buildErrorResponse("missing resource");
 		} else if (!command.getResource().hasURI()) {
 			// "The URI must be present, ..."
-			response = buildErrorResponse("invalid resource - missing uri");
+			response = buildErrorResponse("invalid resource");
 		} else {
 			try {
 				URI uri = new URI(command.getResource().getURI());
 
 				if (!uri.isAbsolute()) {
 					// "... must be absolute ..."
-					response = buildErrorResponse("invalid resource - uri must be absolute");
+					response = buildErrorResponse("invalid resource");
 				} else if (uri.getScheme().equals("file")) {
 					// "... and cannot be a file scheme."
-					response = buildErrorResponse("invalid resource - uri cannot be a file scheme");
+					response = buildErrorResponse("invalid resource");
 				} else if (this.resources.containsKey(command.getResource())
 						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
 					// "Publishing a resource with the same channel and URI but
 					// different owner is not allowed."
-					response = buildErrorResponse("cannot publish resource - uri already exists in channel");
+					response = buildErrorResponse("cannot publish resource");
 				} else {
+					if (this.resources.containsKey(command.getResource())) {
+						this.resources.remove(command.getResource());
+					}
+
 					// SUCCESS
 					command.getResource()
 					.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
@@ -316,7 +337,7 @@ public class Server {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
 				// sendResponse(buildErrorResponse("invalid resource - invalid
 				// uri"), output);
-				response = buildErrorResponse("invalid resource - invalid uri");
+				response = buildErrorResponse("invalid resource");
 			}
 		}
 
@@ -328,12 +349,14 @@ public class Server {
 
 		if (command.getResourceTemplate() == null) {
 			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
+		} else if (command.getRelay() == null) {
+			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 		} else {
 			sendResponse(buildSuccessResponse(), output);
 
 			// Count how many matching resources there are
 			int count = 0;
-			
+
 			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
@@ -345,7 +368,9 @@ public class Server {
 					// "The server will never reveal the owner of a resource in
 					// a response. If a resource has an owner then it will be
 					// replaced with the "*" character."
-					resource.setOwner("*");
+					if (!resource.getSafeOwner().equals("")) {
+						resource.setOwner("*");
+					}
 
 					sendString(resource.toJson(), output);
 
@@ -388,7 +413,8 @@ public class Server {
 				public void run() {
 					try {
 						Socket socket = new Socket();
-						SocketAddress socketAddress = new InetSocketAddress(serverInfo.getHostname(), serverInfo.getPort());
+						SocketAddress socketAddress = new InetSocketAddress(serverInfo.getHostname(),
+								serverInfo.getPort());
 						socket.connect(socketAddress, TIME_OUT_LIMIT);
 
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
@@ -474,19 +500,19 @@ public class Server {
 		} else if (command.getResourceTemplate().getURI() == null
 				|| command.getResourceTemplate().getURI().length() == 0
 				|| command.getResourceTemplate().getURI().isEmpty()) {
-			sendResponse(buildErrorResponse("invalid resourceTemplate - missing uri"), output);
+			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
-			sendResponse(buildErrorResponse("resource doesn't exist"), output);
+			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 		} else if (command.getResourceTemplate().getURI() == null
 				|| command.getResourceTemplate().getURI().length() == 0
 				|| command.getResourceTemplate().getURI().isEmpty()) {
 			// "The URI must be present, ..."
-			sendResponse(buildErrorResponse("invalid resource - missing uri"), output);
+			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 		} else {
 			try {
 				URI uri = new URI(command.getResourceTemplate().getURI());
 				if (!uri.getScheme().equals("file")) {
-					sendResponse(buildErrorResponse("invalid resource - uri must be a file scheme"), output);
+					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 				} else {
 					int foundResources = 0;
 
@@ -508,7 +534,9 @@ public class Server {
 							// resource
 							// in a response. If a resource has an owner then it
 							// will be replaced with the "*" character."
-							resource.setOwner("*");
+							if (!resource.getSafeOwner().equals("")) {
+								resource.setOwner("*");
+							}
 
 							sendString(resource.toJson(), output);
 
@@ -525,10 +553,10 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+				sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 			} catch (IOException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resource - unable to send file"), output);
+				sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
 			}
 		}
 	}
@@ -550,34 +578,38 @@ public class Server {
 		} else if (command.getResource().getURI() == null || command.getResource().getURI().length() == 0
 				|| command.getResource().getURI().isEmpty()) {
 			// "The URI must be present, ..."
-			response = buildErrorResponse("invalid resource - missing uri");
+			response = buildErrorResponse("invalid resource");
 		} else {
 			try {
 				URI uri = new URI(command.getResource().getURI());
 
 				if (!uri.isAbsolute()) {
 					// "..., must be absolute ..."
-					response = buildErrorResponse("invalid resource - uri must be absolute");
+					response = buildErrorResponse("invalid resource");
 				} else if (uri.getAuthority() != null) {
 					// "..., non-authoritative ...."
-					response = buildErrorResponse("invalid resource - uri must be non-authoritative");
+					response = buildErrorResponse("invalid resource");
 				} else if (!uri.getScheme().equals("file")) {
 					// "... and must be a file scheme."
-					response = buildErrorResponse("invalid resource - uri must be a file scheme");
+					response = buildErrorResponse("invalid resource");
 				} else if (this.resources.containsKey(command.getResource())
 						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
 					// "Sharing a resource with the same channel and URI but
 					// different owner is not allowed."
-					response = buildErrorResponse("cannot share resource - uri already exists in channel");
+					response = buildErrorResponse("cannot share resource");
 				} else {
 					File f = new File(uri);
 					if (!f.exists()) {
 						// "[The URI] must point to a file on the local file
 						// system that the server can read as a file."
 						response = buildErrorResponse(
-								"invalid resource - uri does not point to a file on the local file system");
+								"invalid resource");
 					} else {
 						// SUCCESS
+						if (this.resources.containsKey(command.getResource())) {
+							this.resources.remove(command.getResource());
+						}
+
 						command.getResource()
 						.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 						command.getResource().setResourceSize(f.length());
@@ -588,7 +620,7 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resource - invalid uri"), output);
+				sendResponse(buildErrorResponse("invalid resource"), output);
 			}
 		}
 
@@ -605,15 +637,15 @@ public class Server {
 			response = buildErrorResponse("missing resource");
 		} else if (command.getResource().getURI() == null || command.getResource().getURI().isEmpty()) {
 			// URI must be present
-			response = buildErrorResponse("invalid resource - missing uri");
+			response = buildErrorResponse("invalid resource");
 		} else if (!this.resources.containsKey(command.getResource())) {
 			// Resource must exist
-			response = buildErrorResponse("cannot remove resource - resource does not exist");
+			response = buildErrorResponse("cannot remove resource");
 		} else {
 			String owner = this.resources.get(command.getResource());
 			if (!owner.equals(command.getResource().getOwner())) {
 				// Resource must match primary key
-				response = buildErrorResponse("cannot remove resource - wrong owner");
+				response = buildErrorResponse("cannot remove resourc");
 			} else {
 				// SUCCESS
 				this.resources.remove(command.getResource());
@@ -626,8 +658,10 @@ public class Server {
 
 	/**
 	 * 
-	 * @param template The template that states what values a resource should have
-	 * @param resource The resource that has to match the template
+	 * @param template
+	 *            The template that states what values a resource should have
+	 * @param resource
+	 *            The resource that has to match the template
 	 * @return Whether or not the resource matches the template
 	 */
 	private boolean isMatchingResource(Resource template, Resource resource) {
@@ -650,12 +684,12 @@ public class Server {
 
 		// (The candidate name contains the template name as a substring
 		// (for non "" template name) OR
-		boolean nameIsSubstring = template.getName().isEmpty() ? true : resource.getName().equals(template.getName());
+		boolean nameIsSubstring = template.getName().isEmpty() ? false : resource.getName().contains(template.getName());
 
 		// The candidate description contains the template description
 		// as a substring (for non "" template descriptions) OR
-		boolean descriptionIsSubstring = template.getDescription().isEmpty() ? true
-				: resource.getDescription().equals(template.getDescription());
+		boolean descriptionIsSubstring = template.getDescription().isEmpty() ? false
+				: resource.getDescription().contains(template.getDescription());
 
 		// The template description and name are both ""))"
 		boolean noDescriptionAndName = template.getName().isEmpty() && template.getDescription().isEmpty();
@@ -665,7 +699,9 @@ public class Server {
 	}
 
 	/**
-	 * Randomly selects a server from the server list and forwards the server list to it
+	 * Randomly selects a server from the server list and forwards the server
+	 * list to it
+	 * 
 	 * @author alexandrafritzen
 	 *
 	 */
@@ -717,7 +753,8 @@ public class Server {
 
 					try {
 						Socket socket = new Socket();
-						SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(), randomServer.getPort());
+						SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(),
+								randomServer.getPort());
 						socket.connect(socketAddress, TIME_OUT_LIMIT);
 
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
@@ -772,7 +809,7 @@ public class Server {
 		response.setToResultSize(size);
 		return response;
 	}
-	
+
 	/*
 	 * Methods for sending a response, a string, and a file
 	 */

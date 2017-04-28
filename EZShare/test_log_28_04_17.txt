@@ -11,8 +11,8 @@ OK
 -publish -name redditwithtags -tags website,memes -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
 RECEIVED: {"response":"success"}
 Query result: {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
-TODO - should overwrite existing resource with new
-TODO - query should replace owner with "*" only if a owner exist (i.e. "" owner should stay "")
+FIXED - should overwrite existing resource with new
+FIXED - query should replace owner with "*" only if a owner exist (i.e. "" owner should stay "")
 
 java -cp ezshare.jar EZShare.Client -publish -channel ds -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
 RECEIVED: {"response":"success"}
@@ -37,7 +37,7 @@ OK - case sensitive command
 OK - missing tags field
 
 {"command":"PUBLISH","resource":{"name":"reddit","description":"","uri":"http://www.missing_owner.com","channel":"","ezserver":""}}
-TODO - missing owner triggers error, should be filled in with default and processed as normal
+TODO - CANT REPLICATE - missing owner triggers error, should be filled in with default and processed as normal
 
 {"command":"PUBLISH","resource":{"name":"reddit","tags":[],"description":"","uri":"file://home/ezshare.jar","channel":"","owner":"","ezserver":""}}\
 RECEIVED: {"response":"error","errorMessage":"invalid resource - uri cannot be a file scheme"}
@@ -57,7 +57,7 @@ TMI - "invalid resource"
 
 {"command":"PUBLISH","resource":{"name":"*","tags":[],"description":"","uri":"http://www.star_inc.com","channel":"","owner":"","ezserver":""}}
 RECEIVED: {"response":"error","errorMessage":"String values cannot be *"}
-TODO & TMI - other fields can be *, only owner rule needs to be enforced
+FIXED & TMI - other fields can be *, only owner rule needs to be enforced
 
 {"command":"PUBLISH"}
 {"response":"error","errorMessage":"missing resource"}
@@ -67,7 +67,7 @@ OK
 {"resource":{"name":"","tags":[],"description":"","uri":"http://www.star_inc.com","channel":"","owner":"","ezserver":""}}
 {}
 "command" (not even json)
-TODO - server should return "missing or incorrect type for command" error message for all of the above
+FIXED - server should return "missing or incorrect type for command" error message for all of the above
 
 
 
@@ -91,7 +91,7 @@ OK
 
 java -cp ezshare.jar EZShare.Client -remove -uri http://a.v.com -host 130.56.251.227 -port 2222 -debug
 RECEIVED: {"response":"error","errorMessage":"cannot remove resource - resource does not exist"}
-TODO & TMI - "cannot remove resource" is the required response
+FIXED - "cannot remove resource" is the required response
 
 -remove -name myfile -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1234
 RECEIVED: {"response":"success"}
@@ -99,7 +99,7 @@ OK - simply ignores additional field secret
 
 -remove -name myfilebagain -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1234
 RECEIVED: {"response":"error","errorMessage":"cannot remove resource - wrong owner"}
-TMI & TODO - server not suppose to ever hint at who the owner is, this is way too much information
+FIXED - server not suppose to ever hint at who the owner is, this is way too much information
 
 
 *BAD COMMAND CASES*
@@ -111,7 +111,7 @@ OK
 
 {"command":"REMOVE","resource":{"uri":"www.missing_tags.com","channel":""}
 TODO - only the primary key fields are required to remove the resource, this should successfully remove the resource on the public channel, currently gives error
-
+AF - primary key consists of owner, uri, and channel, i.e. ("","",http://www.unimelb.edu.au). Your request doesn’t have an owner. Should it also work without the owner field?
 
 ** SHARE **
 java -cp ezshare.jar EZShare.Client -share -uri file:///photo.jpg -host 130.56.251.227 -port 2222 -debug
@@ -131,7 +131,7 @@ RECEIVED: {"response":"success"}
 OK
 
 -share -name filebagain -owner b -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1234
-TODO - for matching primary key, should overwrite existing resource with new
+FIXED - for matching primary key, should overwrite existing resource with new
 
 -share -name myfilea -owner a -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret 1234
 RECEIVED: {"response":"error","errorMessage":"cannot share resource - uri already exists in channel"}
@@ -181,7 +181,7 @@ java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 2222 -debu
 29/04/2017 01:34:02.356 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
 29/04/2017 01:34:02.356 - [EZShare.Client.main] - [INFO] - Success!
 29/04/2017 01:34:02.357 - [EZShare.Client.main] - [ERROR] - java.io.EOFException null
-TODO - java.io.EOFException, server not sending back any results? expect 1 (ab)
+TODO — CANT REPLICATE - java.io.EOFException, server not sending back any results? expect 1 (ab)
 
 
 java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 2222 -debug -tags b
@@ -192,7 +192,7 @@ java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 2222 -debu
 29/04/2017 01:38:22.244 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
 29/04/2017 01:38:22.244 - [EZShare.Client.main] - [INFO] - {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
 29/04/2017 01:38:22.245 - [EZShare.Client.main] - [ERROR] - java.io.EOFException null
-TODO - java.io.EOFException, server not sending back the other result...(expect 2, wiki & ab)
+TODO — CANT REPLICATE - java.io.EOFException, server not sending back the other result...(expect 2, wiki & ab)
 
 -query -host 130.56.251.227 -port 2222 -debug -tags b -owner a
 29/04/2017 01:44:04.560 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":["b"],"description":"","uri":"","channel":"","owner":"a","ezserver":""}}
@@ -200,7 +200,7 @@ TODO - java.io.EOFException, server not sending back the other result...(expect 
 29/04/2017 01:44:04.604 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
 29/04/2017 01:44:04.605 - [EZShare.Client.main] - [INFO] - Success!
 29/04/2017 01:44:04.605 - [EZShare.Client.main] - [ERROR] - java.io.EOFException null
-TODO - java.io.EOFException, expect 0 result.
+TODO - CANT REPLICATE - java.io.EOFException, expect 0 result.
 
 -query -host 130.56.251.227 -port 2222 -debug -owner a
 29/04/2017 01:36:19.348 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"a","ezserver":""}}
@@ -253,7 +253,7 @@ OK - AND contains substring of name
 29/04/2017 01:51:52.561 - [EZShare.Client.main] - [INFO] - {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"1","owner":"*","ezserver":"130.56.251.227:2222"}
 29/04/2017 01:51:52.561 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
 29/04/2017 01:51:52.563 - [EZShare.Client.main] - [INFO] - Query finished. Found 1 results.
-TODO - name doesn't contain blue, shouldn't return any matches...
+FIXED - name doesn't contain blue, shouldn't return any matches...
 
 -query -host 130.56.251.227 -port 2222 -debug -owner a -channel 1 tags b
 29/04/2017 01:46:38.639 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":["b"],"description":"","uri":"","channel":"1","owner":"a","ezserver":""}}
@@ -261,7 +261,7 @@ TODO - name doesn't contain blue, shouldn't return any matches...
 29/04/2017 01:46:38.680 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
 29/04/2017 01:46:38.681 - [EZShare.Client.main] - [INFO] - Success!
 29/04/2017 01:46:38.681 - [EZShare.Client.main] - [ERROR] - java.io.EOFException null
-TODO - java.io.EOFException, expect 0 result.
+TODO - CANT REPLICATE - java.io.EOFException, expect 0 result.
 
 -query -host 130.56.251.227 -port 2222 -debug -channel 3 -description "something"
 
@@ -283,10 +283,10 @@ OK - description is substring
 29/04/2017 02:00:26.654 - [EZShare.Client.main] - [INFO] - {"name":"reddit","tags":[],"description":"Something here","uri":"http://www.reddit.com","channel":"3","owner":"*","ezserver":"130.56.251.227:2222"}
 29/04/2017 02:00:26.655 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
 29/04/2017 02:00:26.658 - [EZShare.Client.main] - [INFO] - Query finished. Found 1 results.
-TODO - description is not a substring...expect 0 result.
+FIXED - description is not a substring...expect 0 result.
 
 -query -host 130.56.251.227 -port 2222 -debug -channel 3 -description "Nothing" -name "red"
-TODO - expect 1 result, description not substring but name is
+FIXED - expect 1 result, description not substring but name is
 
 /* BAD COMMANDS */
 {"command":"QUERY","resource":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}RECEIVED: {"response":"error","errorMessage":"missing resourceTemplate"}
@@ -301,13 +301,14 @@ OK - also ok when "relay":true
 
 {"command":"QUERY","resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
 TODO - omitting relay field throw java.io.EOFException after displaying all the results, same problem is relay field value is not boolean type (e.g. "true", or 1/0) - need server to handle this and respond with "invalid resourceTemplate" message
+FIXED? If no relay it sends "invalid resourceTemplate" message, if relay is anything but true, it’s set to false
 
 {"command":"QUERY","relay":true,"resourceTemplate":{"name":"reddit","tags":[],"description":"","uri":"","channel":"","owner":"*","ezserver":""}}
 29/04/2017 02:31:00.702 - [Test.BadCommandsTest.main] - [INFO] - Connecting to host 130.56.251.227 at port 2222
 29/04/2017 02:31:00.745 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"reddit","tags":[],"description":"","uri":"","channel":"","owner":"*","ezserver":""}}
 29/04/2017 02:31:00.796 - [Test.BadCommandsTest.main] - [DEBUG] - RECEIVED: {"response":"error","errorMessage":"String values cannot be *"}
 29/04/2017 02:31:00.823 - [Test.BadCommandsTest.main] - [ERROR] - Error: String values cannot be *
-TODO - required message is "invalid resourceTemplate", same for "\0" character
+FIXED - required message is "invalid resourceTemplate", same for "\0" character
 
 {"command":"QUERY","relay":true}
 RECEIVED: {"response":"error","errorMessage":"missing resourceTemplate"}
@@ -326,11 +327,11 @@ OK
 
 java -cp ezshare.jar EZShare.Client -fetch -uri idonotexist -host 130.56.251.227 -port 2222 -debug
 RECEIVED: {"response":"error","errorMessage":"resource doesn\u0027t exist"}
-TODO & TMI - single quote display issue, "invalid resourceTemplate" would suffice too
+FIXED - single quote display issue, "invalid resourceTemplate" would suffice too
 
 java -cp ezshare.jar EZShare.Client -fetch -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
 RECEIVED: {"response":"error","errorMessage":"invalid resource - uri must be a file scheme"}
-TODO & TMI - single quote display issue, "invalid resourceTemplate" is required
+FIXED - single quote display issue, "invalid resourceTemplate" is required
 
 java -cp ezshare.jar EZShare.Client -fetch -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug
 24/04/2017 13:45:14.847 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
@@ -354,7 +355,7 @@ OK
 29/04/2017 02:45:58.670 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"FETCH","resourceTemplate":{"uri":"file:///home/ubuntu/test_file.txt"}}
 29/04/2017 02:45:58.713 - [Test.BadCommandsTest.main] - [DEBUG] - RECEIVED: {"response":"error","errorMessage":"resource doesn\u0027t exist"}
 29/04/2017 02:45:58.740 - [Test.BadCommandsTest.main] - [ERROR] - Error: resource doesn't exist
-TODO - this is missing channel, server should respond with "invalid resourceTemplate"
+FIXED - this is missing channel, server should respond with "invalid resourceTemplate"
 
 
 {"command":"FETCH","resourceTemplate":{"uri":"file:///home/ubuntu/test_file.txt","channel":""}}
@@ -399,7 +400,7 @@ OK
 29/04/2017 03:20:08.083 - [Test.BadCommandsTest.main] - [INFO] - Connecting to host 130.56.251.227 at port 2222
 29/04/2017 03:20:08.124 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"EXCHANGE","serverList":[{"hostname":"115.146.85.165","port":"not_number"}]}
 java.io.EOFException
-TODO - need server to handle bad input types for server records (JSON parsing error?) and return error message
+FIXED - need server to handle bad input types for server records (JSON parsing error?) and return error message
 
 ** SERVER INTERACTIONS **
 Set up: start local server and run -exchange -servers syd.sorz.org:3780 -debug on client
