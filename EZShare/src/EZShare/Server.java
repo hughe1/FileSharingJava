@@ -205,6 +205,8 @@ public class Server {
 				processMissingOrIncorrectTypeForCommand(output);
 			} else {
 				if (!parseCommandForErrors(command, output)) {
+					substituteNullFields(command);
+					
 					switch (command.getCommand()) {
 					case Command.QUERY_COMMAND:
 						processQueryCommand(command, output);
@@ -313,10 +315,12 @@ public class Server {
 				}
 			}
 
-			if ((command.getResourceTemplate() != null && command.getResourceTemplate().getOwner() != null
-					&& command.getResourceTemplate().getOwner().equals(Resource.HIDDEN_OWNER))
-					|| (command.getResource() != null && command.getResource().getOwner() != null
-					&& command.getResource().getOwner().equals(Resource.HIDDEN_OWNER))) {
+			if (command.getResourceTemplate() != null && command.getResourceTemplate().getOwner() != null
+					&& command.getResourceTemplate().getOwner().equals(Resource.HIDDEN_OWNER)) {
+				sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
+				errorFound = true;
+			} else if (command.getResource() != null && command.getResource().getOwner() != null
+					&& command.getResource().getOwner().equals(Resource.HIDDEN_OWNER)) {
 				sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE), output);
 				errorFound = true;
 			}
@@ -325,6 +329,18 @@ public class Server {
 		return errorFound;
 	}
 
+	/**
+	 * Substitutes any null fields in the command with the default value
+	 * @param command The command to be checked
+	 */
+	private void substituteNullFields(Command command) {
+		if (command.getResource() != null) {
+			command.getResource().setNullResourceFieldsToDefault();
+		} else if (command.getResourceTemplate() != null) {
+			command.getResourceTemplate().setNullResourceFieldsToDefault();			
+		}
+	}
+	
 	/**
 	 * Processes an invalid command
 	 * 

@@ -45,7 +45,6 @@ public class Resource extends JsonModel {
 	 * Default constructor
 	 */
 	public Resource() {
-
 	}
 
 	@Override
@@ -101,6 +100,24 @@ public class Resource extends JsonModel {
 		String[] tokens = tags_string.split(",");
 		for (String token : tokens) {
 			this.tags.add(token);
+		}
+	}
+
+	/**
+	 * Checks if any fields in the resource are null and if so, substitutes that
+	 * value with the default value
+	 */
+	public void setNullResourceFieldsToDefault() {
+		if (this.getChannel() == null) {
+			this.setChannel(Resource.DEFAULT_CHANNEL);
+		} else if (this.getDescription() == null) {
+			this.setDescription(Resource.DEFAULT_DESCRIPTION);
+		} else if (this.getName() == null) {
+			this.setName(Resource.DEFAULT_NAME);
+		} else if (this.getOwner() == null) {
+			this.setOwner(Resource.DEFAULT_OWNER);
+		} else if (this.getURI() == null) {
+			this.setURI(Resource.DEFAULT_URI);
 		}
 	}
 
@@ -166,6 +183,18 @@ public class Resource extends JsonModel {
 
 	public void setResourceSize(long l) {
 		this.resourceSize = l;
+	}
+
+	public void setURI(String uri) {
+		this.uri = uri;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
 	}
 
 	@Override
