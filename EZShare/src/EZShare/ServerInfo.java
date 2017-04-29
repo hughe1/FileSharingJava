@@ -1,11 +1,11 @@
 package EZShare;
 
 /**
- * The ServerInfo class represents server information. The class primarily provides 
- * a container for host name and port. Usage is intended in the EXCHANGE command 
- * builder to form the serverList. 
+ * The ServerInfo class represents server information. The class primarily
+ * provides a container for host name and port. Usage is intended in the
+ * EXCHANGE command builder to form the serverList.
  * 
- * The class implements hashCode and equals so that objects can be easily hashed 
+ * The class implements hashCode and equals so that objects can be easily hashed
  * and compared against other ServerInfo objects.
  * 
  */
@@ -26,7 +26,6 @@ public class ServerInfo {
 		this.port = port;
 	}
 
-
 	@Override
 	public int hashCode() {
 		final int PRIME = 31;
@@ -36,7 +35,6 @@ public class ServerInfo {
 		return result;
 	}
 
-	
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -45,26 +43,25 @@ public class ServerInfo {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		
-		//Safe to cast as ServerInfo object now
+
+		// Safe to cast as ServerInfo object now
 		ServerInfo other = (ServerInfo) obj;
 		if (hostname == null) {
 			if (other.hostname != null)
 				return false;
 		} else if (!hostname.equals(other.hostname))
 			return false;
-		
+
 		if (port == null) {
 			if (other.port != null)
 				return false;
 		} else if (!port.equals(other.port))
 			return false;
-		
-		//Matching hostname and port
+
+		// Matching hostname and port
 		return true;
 	}
-	
-	
+
 	/**
 	 * @return the host name
 	 */

@@ -3,40 +3,39 @@ package EZShare;
 import java.util.ArrayList;
 
 /**
- * The Command class represents commands that may be sent from an EZShare client to 
- * an EZShare server.
+ * The Command class represents commands that may be sent from an EZShare client
+ * to an EZShare server.
  * 
- * Only seven formats of commands are constructible (including invalid for testing): 
- * 		QUERY, PUBLISH, FETCH, EXCHANGE, SHARE, REMOVE, INVALID.
+ * Only seven formats of commands are constructible (including invalid for
+ * testing): QUERY, PUBLISH, FETCH, EXCHANGE, SHARE, REMOVE, INVALID.
  * 
- * Fields can only be initialize using the build methods to ensure correct formatting.
+ * Fields can only be initialize using the build methods to ensure correct
+ * formatting.
  * 
- * Note:
- * Upon construction, all fields are set to null. Null fields are NOT part of the 
- * command and will be disregarded when converting to JSON for communication.
+ * Note: Upon construction, all fields are set to null. Null fields are NOT part
+ * of the command and will be disregarded when converting to JSON for
+ * communication.
  */
 public class Command extends JsonModel {
-	
-	/* Defined commands recognized by the server */
-	public static final String QUERY_COMMAND = "QUERY";
-	public static final String PUBLISH_COMMAND = "PUBLISH";
-	public static final String FETCH_COMMAND = "FETCH";
-	public static final String EXCHANGE_COMMAND = "EXCHANGE";
-	public static final String SHARE_COMMAND = "SHARE";
-	public static final String REMOVE_COMMAND = "REMOVE";
-	
-	public static final String INVALID_COMMAND = "INVALID"; //TODO: AZ - I think the client should simply reject this from the get go
 
+	/* Defined commands recognized by the server */
+	public static final String EXCHANGE_COMMAND = "EXCHANGE";
+	public static final String FETCH_COMMAND = "FETCH";
+	public static final String PUBLISH_COMMAND = "PUBLISH";
+	public static final String QUERY_COMMAND = "QUERY";
+	public static final String REMOVE_COMMAND = "REMOVE";
+	public static final String SHARE_COMMAND = "SHARE";
+	
 	public static final String RESOURCE_OPTION = "resource";
 	public static final String RESOURCE_TEMPLATE_OPTION = "resourceTemplate";
-	
+
 	private String command;
 	private String secret;
 	private Boolean relay;
 	private Resource resource;
 	private Resource resourceTemplate;
 	private ArrayList<ServerInfo> serverList;
-	
+
 	/**
 	 * Default constructor
 	 */
@@ -44,11 +43,11 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Constructs a Command object based on the command line arguments (clientArgs). 
+	 * Constructs a Command object based on the command line arguments
+	 * (clientArgs).
 	 * 
-	 * Note: 
-	 * If less or more than one server command options are included in the 
-	 * client arguments (i.e. if publish and query are both present), an INVALID 
+	 * Note: If less or more than one server command options are included in the
+	 * client arguments (i.e. if publish and query are both present), an INVALID
 	 * Command object will be constructed.
 	 * 
 	 * @param clientArgs
@@ -74,16 +73,14 @@ public class Command extends JsonModel {
 			buildRemove(clientArgs);
 			break;
 		default:
-			//No valid command option or multiple commands found
-			buildInvalid(clientArgs);
 			break;
 		}
 	}
 
-
 	/**
-	 * Builds a query Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds a query Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the query options provided.
@@ -96,8 +93,9 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Builds a publish Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds a publish Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the publish options provided.
@@ -109,8 +107,9 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Builds an exchange Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds an exchange Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the exchange options provided.
@@ -127,8 +126,9 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Builds a fetch Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds a fetch Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the fetch options provided.
@@ -140,8 +140,9 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Builds a share Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds a share Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the share options provided.
@@ -154,8 +155,9 @@ public class Command extends JsonModel {
 	}
 
 	/**
-	 * Builds a remove Command based on the arguments in a given a ClientArgs object. 
-	 * Only fields relevant to the command are set according to the client arguments.
+	 * Builds a remove Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
 	 * 
 	 * @param clientArgs
 	 * @return a Command object corresponding the the remove options provided.
@@ -165,23 +167,10 @@ public class Command extends JsonModel {
 		this.resource = new Resource(clientArgs);
 		return this;
 	}
-	
-	/**
-	 * Builds an invalid Command (mostly for testing purpose). Client can simply
-	 * return an error instead, if needed.
-	 * 
-	 * @param clientArgs
-	 * @return a Command object that will generate a command is invalid response from
-	 * the server.
-	 */
-	public Command buildInvalid(ClientArgs clientArgs) {
-		this.command = INVALID_COMMAND;
-		return this;
-	}
 
 	/**
-	 * The addServerList is helper method to parse and add details about a server
-	 * to the serverList. Normally used when building a SHARE command.
+	 * The addServerList is helper method to parse and add details about a
+	 * server to the serverList. Normally used when building a SHARE command.
 	 * 
 	 * @param str
 	 *            has the form host:port,host:port,...
@@ -194,7 +183,7 @@ public class Command extends JsonModel {
 		for (String token : addresses) {
 			// split by ":"
 			String[] hostPortToken = token.split(":");
-			
+
 			// Check for wrongly formatted host:port strings
 			if (hostPortToken.length > 1) {
 				// get the host in position 0
@@ -206,12 +195,12 @@ public class Command extends JsonModel {
 			}
 		}
 	}
-	
+
 	/* Getters and Setters for accessing instance variables */
-	public String getCommand(){
+	public String getCommand() {
 		return command;
 	}
-		
+
 	public String getSecret() {
 		return secret;
 	}

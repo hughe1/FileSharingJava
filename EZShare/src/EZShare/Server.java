@@ -35,12 +35,26 @@ public class Server {
 	public static final int TIME_OUT_LIMIT = 5000;
 	public static final int BUF_SIZE = 1024 * 4; // when sending a file
 
-	private ServerArgs serverArgs;
+	private static final String ERROR_CANNOT_PUBLISH_RESOURCE = "cannot publish resource";
+	private static final String ERROR_CANNOT_REMOVE_RESOURCE = "cannot remove resource";
+	private static final String ERROR_CANNOT_SHARE_RESOURCE = "cannot share resource";
+	private static final String ERROR_INCORRECT_SECRET = "incorrect secret";
+	private static final String ERROR_INVALID_COMMAND = "invalid command";
+	private static final String ERROR_INVALID_RESOURCE = "invalid resource";
+	private static final String ERROR_INVALID_RESOURCE_TEMPLATE = "invalid resourceTemplate";
+	private static final String ERROR_MISSING_OR_INCORRECT_TYPE_FOR_COMMAND = "missing or incorrect type for command";
+	private static final String ERROR_MISSING_OR_INVALID_SERVER_LIST = "missing or invalid server list";
+	private static final String ERROR_MISSING_RESOURCE = "missing resource";
+	private static final String ERROR_MISSING_RESOURCE_ANDOR_SECRET = "missing resource and/or secret";
+	private static final String ERROR_MISSING_RESOURCE_TEMPLATE = "missing resource template";
+
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
+	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
+
+	private ServerArgs serverArgs;
 
 	private static Logger logger;
-	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
 
 	public static void main(String[] args) {
 		// instantiate a server and have it listen on a port
@@ -56,15 +70,15 @@ public class Server {
 	 */
 	public Server(String[] args) {
 		serverArgs = new ServerArgs(args);
-		this.printDebugInfo();
+		this.setupLogger();
+		this.printServerInfo();
 		// TODO: populate resources from file/Database
 	}
 
 	/**
-	 * Examines the command line arguments and prints useful debug info when the
-	 * server is deployed.
+	 * Sets up the logger
 	 */
-	private void printDebugInfo() {
+	private void setupLogger() {
 		if (serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
 			System.setProperty("log4j.configurationFile", "logging-config-debug.xml");
 		} else {
@@ -72,6 +86,12 @@ public class Server {
 		}
 		logger = LogManager.getRootLogger();
 		logger.debug("Debugger enabled");
+	}
+
+	/**
+	 * Prints the server's basic info
+	 */
+	private void printServerInfo() {
 		if (serverArgs.hasOption(ServerArgs.ADVERTISED_HOST_NAME_OPTION)) {
 			logger.debug("Advertised hostname command found");
 		}
@@ -182,7 +202,7 @@ public class Server {
 			Command command = getSafeCommand(request);
 
 			if (command == null) {
-				processMissingOrInvalidCommand(output);
+				processMissingOrIncorrectTypeForCommand(output);
 			} else {
 				if (!parseCommandForErrors(command, output)) {
 					switch (command.getCommand()) {
@@ -193,8 +213,7 @@ public class Server {
 						processFetchCommand(command, output, clientSocket.getOutputStream());
 						break;
 					case Command.EXCHANGE_COMMAND:
-						processExchangeCommand(command, output,
-								new ServerInfo(client.getInetAddress().getHostName(), client.getPort()));
+						processExchangeCommand(command, output);
 						break;
 					case Command.PUBLISH_COMMAND:
 						processPublishCommand(command, output);
@@ -221,6 +240,13 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Safely reads the JSON string into a Command object
+	 * 
+	 * @param request
+	 *            The JSON string to be transformed into a Command object
+	 * @return Null if the JSON is not readable or the Command object
+	 */
 	private Command getSafeCommand(String request) {
 		try {
 			Command command = (new Command()).fromJson(request);
@@ -230,6 +256,15 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Checks if the command is erroneous
+	 * 
+	 * @param command
+	 *            The command to be checked for errors
+	 * @param output
+	 *            The DataOutputStream of the socket to send errors to
+	 * @return A boolean value of whether or not the command was erroneous
+	 */
 	private boolean parseCommandForErrors(Command command, DataOutputStream output) {
 		// "String values must not contain the "\0" character, nor start or end
 		// with whitespace."
@@ -238,7 +273,7 @@ public class Server {
 		boolean errorFound = false;
 
 		if (command.getCommand() == null) {
-			processMissingOrInvalidCommand(output);
+			processMissingOrIncorrectTypeForCommand(output);
 			errorFound = true;
 		} else {
 			ArrayList<String> stringValues = new ArrayList<>();
@@ -268,19 +303,21 @@ public class Server {
 				if (value == null) {
 					// Do nothing
 				} else if (value != value.trim()) {
-					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+					sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 					errorFound = true;
 					break;
 				} else if (value.contains("\0")) {
-					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+					sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 					errorFound = true;
 					break;
 				}
 			}
 
-			if ((command.getResourceTemplate() != null && command.getResourceTemplate().getOwner() != null && command.getResourceTemplate().getOwner().equals("*"))
-					|| (command.getResource() != null && command.getResource().getOwner() != null && command.getResource().getOwner().equals("*"))) {
-				sendResponse(buildErrorResponse("invalid resource"), output);
+			if ((command.getResourceTemplate() != null && command.getResourceTemplate().getOwner() != null
+					&& command.getResourceTemplate().getOwner().equals(Resource.HIDDEN_OWNER))
+					|| (command.getResource() != null && command.getResource().getOwner() != null
+					&& command.getResource().getOwner().equals(Resource.HIDDEN_OWNER))) {
+				sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE), output);
 				errorFound = true;
 			}
 		}
@@ -288,40 +325,60 @@ public class Server {
 		return errorFound;
 	}
 
+	/**
+	 * Processes an invalid command
+	 * 
+	 * @param output
+	 *            The DataOutputStream of the socket to send errors to
+	 */
 	private void processInvalidCommand(DataOutputStream output) {
-		sendResponse(buildErrorResponse("invalid command"), output);
+		sendResponse(buildErrorResponse(ERROR_INVALID_COMMAND), output);
 	}
 
-	private void processMissingOrInvalidCommand(DataOutputStream output) {
-		sendResponse(buildErrorResponse("missing or incorrect type for command"), output);
+	/**
+	 * Processes a missing or incorrect type for command
+	 * 
+	 * @param output
+	 *            The DataOutputStream of the socket to send errors to
+	 */
+	private void processMissingOrIncorrectTypeForCommand(DataOutputStream output) {
+		sendResponse(buildErrorResponse(ERROR_MISSING_OR_INCORRECT_TYPE_FOR_COMMAND), output);
 	}
 
+	/**
+	 * Processes a PUBLISH command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 */
 	private void processPublishCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing PUBLISH command");
 
-		Response response = buildErrorResponse("cannot publish resource");
+		Response response = buildErrorResponse(ERROR_CANNOT_PUBLISH_RESOURCE);
 
 		// Check for invalid resource fields
 		if (command.getResource() == null) {
-			response = buildErrorResponse("missing resource");
+			response = buildErrorResponse(ERROR_MISSING_RESOURCE);
 		} else if (!command.getResource().hasURI()) {
 			// "The URI must be present, ..."
-			response = buildErrorResponse("invalid resource");
+			response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 		} else {
 			try {
 				URI uri = new URI(command.getResource().getURI());
 
 				if (!uri.isAbsolute()) {
 					// "... must be absolute ..."
-					response = buildErrorResponse("invalid resource");
+					response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 				} else if (uri.getScheme().equals("file")) {
 					// "... and cannot be a file scheme."
-					response = buildErrorResponse("invalid resource");
+					response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 				} else if (this.resources.containsKey(command.getResource())
 						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
 					// "Publishing a resource with the same channel and URI but
 					// different owner is not allowed."
-					response = buildErrorResponse("cannot publish resource");
+					response = buildErrorResponse(ERROR_CANNOT_PUBLISH_RESOURCE);
 				} else {
 					if (this.resources.containsKey(command.getResource())) {
 						this.resources.remove(command.getResource());
@@ -335,22 +392,28 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				// sendResponse(buildErrorResponse("invalid resource - invalid
-				// uri"), output);
-				response = buildErrorResponse("invalid resource");
+				response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 			}
 		}
 
 		sendResponse(response, output);
 	}
 
+	/**
+	 * Processes a QUERY command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 */
 	private void processQueryCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing QUERY command");
 
 		if (command.getResourceTemplate() == null) {
-			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else if (command.getRelay() == null) {
-			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else {
 			sendResponse(buildSuccessResponse(), output);
 
@@ -368,8 +431,8 @@ public class Server {
 					// "The server will never reveal the owner of a resource in
 					// a response. If a resource has an owner then it will be
 					// replaced with the "*" character."
-					if (!resource.getSafeOwner().equals("")) {
-						resource.setOwner("*");
+					if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
+						resource.setOwner(Resource.HIDDEN_OWNER);
 					}
 
 					sendString(resource.toJson(), output);
@@ -388,6 +451,15 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Processes a QUERY relay
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 * @return The number of resources found
+	 */
 	private int processQueryRelay(Command command, DataOutputStream output) {
 		logger.debug("Relaying query...");
 		int count = 0;
@@ -472,11 +544,19 @@ public class Server {
 		return count;
 	}
 
-	private void processExchangeCommand(Command command, DataOutputStream output, ServerInfo source) {
+	/**
+	 * Processes an EXCHANGE command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 */
+	private void processExchangeCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing EXCHANGE command");
 
 		if (command.getServerList() == null || command.getServerList().size() == 0) {
-			sendResponse(buildErrorResponse("missing or invalid server list"), output);
+			sendResponse(buildErrorResponse(ERROR_MISSING_OR_INVALID_SERVER_LIST), output);
 		} else {
 			for (ServerInfo serverInfo : command.getServerList()) {
 				// Check if that is our current server
@@ -491,28 +571,38 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Processes a FETCH command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 * @param os
+	 *            The OutputStream of the socket
+	 */
 	private void processFetchCommand(Command command, DataOutputStream output, OutputStream os) {
 		logger.debug("Processing FETCH command");
 
 		// Check for invalid resourceTemplate fields
 		if (command.getResourceTemplate() == null) {
-			sendResponse(buildErrorResponse("missing resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else if (command.getResourceTemplate().getURI() == null
 				|| command.getResourceTemplate().getURI().length() == 0
 				|| command.getResourceTemplate().getURI().isEmpty()) {
-			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else if (!this.resources.containsKey(command.getResourceTemplate())) {
-			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else if (command.getResourceTemplate().getURI() == null
 				|| command.getResourceTemplate().getURI().length() == 0
 				|| command.getResourceTemplate().getURI().isEmpty()) {
 			// "The URI must be present, ..."
-			sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else {
 			try {
 				URI uri = new URI(command.getResourceTemplate().getURI());
 				if (!uri.getScheme().equals("file")) {
-					sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+					sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 				} else {
 					int foundResources = 0;
 
@@ -534,8 +624,8 @@ public class Server {
 							// resource
 							// in a response. If a resource has an owner then it
 							// will be replaced with the "*" character."
-							if (!resource.getSafeOwner().equals("")) {
-								resource.setOwner("*");
+							if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
+								resource.setOwner(Resource.HIDDEN_OWNER);
 							}
 
 							sendString(resource.toJson(), output);
@@ -553,57 +643,64 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+				sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 			} catch (IOException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resourceTemplate"), output);
+				sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 			}
 		}
 	}
 
+	/**
+	 * Processes a SHARE command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 */
 	private void processShareCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing SHARE command");
 
-		Response response = buildErrorResponse("cannot share resource");
+		Response response = buildErrorResponse(ERROR_CANNOT_SHARE_RESOURCE);
 
 		// Check for invalid resource fields
 		if (command.getSecret() == null || command.getSecret().isEmpty() || command.getSecret().length() == 0) {
 			// "The server secret must be present ..."
-			response = buildErrorResponse("missing resource and/or secret");
+			response = buildErrorResponse(ERROR_MISSING_RESOURCE_ANDOR_SECRET);
 		} else if (!command.getSecret().equals(this.serverArgs.getSafeSecret())) {
 			// "... and must equal the value known to the server."
-			response = buildErrorResponse("incorrect secret");
+			response = buildErrorResponse(ERROR_INCORRECT_SECRET);
 		} else if (command.getResource() == null) {
-			response = buildErrorResponse("missing resource and/or secret");
+			response = buildErrorResponse(ERROR_MISSING_RESOURCE_ANDOR_SECRET);
 		} else if (command.getResource().getURI() == null || command.getResource().getURI().length() == 0
 				|| command.getResource().getURI().isEmpty()) {
 			// "The URI must be present, ..."
-			response = buildErrorResponse("invalid resource");
+			response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 		} else {
 			try {
 				URI uri = new URI(command.getResource().getURI());
 
 				if (!uri.isAbsolute()) {
 					// "..., must be absolute ..."
-					response = buildErrorResponse("invalid resource");
+					response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 				} else if (uri.getAuthority() != null) {
 					// "..., non-authoritative ...."
-					response = buildErrorResponse("invalid resource");
+					response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 				} else if (!uri.getScheme().equals("file")) {
 					// "... and must be a file scheme."
-					response = buildErrorResponse("invalid resource");
+					response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 				} else if (this.resources.containsKey(command.getResource())
 						&& !this.resources.get(command.getResource()).equals(command.getResource().getOwner())) {
 					// "Sharing a resource with the same channel and URI but
 					// different owner is not allowed."
-					response = buildErrorResponse("cannot share resource");
+					response = buildErrorResponse(ERROR_CANNOT_SHARE_RESOURCE);
 				} else {
 					File f = new File(uri);
 					if (!f.exists()) {
 						// "[The URI] must point to a file on the local file
 						// system that the server can read as a file."
-						response = buildErrorResponse(
-								"invalid resource");
+						response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 					} else {
 						// SUCCESS
 						if (this.resources.containsKey(command.getResource())) {
@@ -620,32 +717,40 @@ public class Server {
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				sendResponse(buildErrorResponse("invalid resource"), output);
+				response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 			}
 		}
 
 		sendResponse(response, output);
 	}
 
+	/**
+	 * Processes a REMOVE command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 */
 	private void processRemoveCommand(Command command, DataOutputStream output) {
 		logger.debug("Processing REMOVE command");
 
-		Response response = buildErrorResponse("cannot remove resource");
+		Response response = buildErrorResponse(ERROR_CANNOT_REMOVE_RESOURCE);
 
 		// Check for invalid resource fields
 		if (command.getResource() == null) {
-			response = buildErrorResponse("missing resource");
+			response = buildErrorResponse(ERROR_MISSING_RESOURCE);
 		} else if (command.getResource().getURI() == null || command.getResource().getURI().isEmpty()) {
 			// URI must be present
-			response = buildErrorResponse("invalid resource");
+			response = buildErrorResponse(ERROR_INVALID_RESOURCE);
 		} else if (!this.resources.containsKey(command.getResource())) {
 			// Resource must exist
-			response = buildErrorResponse("cannot remove resource");
+			response = buildErrorResponse(ERROR_CANNOT_REMOVE_RESOURCE);
 		} else {
 			String owner = this.resources.get(command.getResource());
 			if (!owner.equals(command.getResource().getOwner())) {
 				// Resource must match primary key
-				response = buildErrorResponse("cannot remove resourc");
+				response = buildErrorResponse(ERROR_CANNOT_REMOVE_RESOURCE);
 			} else {
 				// SUCCESS
 				this.resources.remove(command.getResource());
@@ -684,7 +789,8 @@ public class Server {
 
 		// (The candidate name contains the template name as a substring
 		// (for non "" template name) OR
-		boolean nameIsSubstring = template.getName().isEmpty() ? false : resource.getName().contains(template.getName());
+		boolean nameIsSubstring = template.getName().isEmpty() ? false
+				: resource.getName().contains(template.getName());
 
 		// The candidate description contains the template description
 		// as a substring (for non "" template descriptions) OR
@@ -784,6 +890,12 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Removes a given server from the server list
+	 * 
+	 * @param serverInfo
+	 *            The ServerInfo object to be removed
+	 */
 	private void removeServer(ServerInfo serverInfo) {
 		logger.debug("Removing server " + serverInfo.toString() + " from server list");
 		servers.remove(serverInfo);
@@ -792,18 +904,39 @@ public class Server {
 	/*
 	 * Methods for building a new success, error or result-size message
 	 */
+	/**
+	 * Builds a success response
+	 * 
+	 * @return A Response object with response field set to "success"
+	 */
 	private Response buildSuccessResponse() {
 		Response response = new Response();
 		response.setToSuccess();
 		return response;
 	}
 
+	/**
+	 * Builds an error response
+	 * 
+	 * @param message
+	 *            The value of the errorMessage to be set
+	 * @return A Response object with response field set to "error" and
+	 *         errorMessage field to the given message
+	 */
 	private Response buildErrorResponse(String message) {
 		Response response = new Response();
 		response.setToError(message);
 		return response;
 	}
 
+	/**
+	 * Builds a result size response
+	 * 
+	 * @param size
+	 *            The value of the resultSize to be set
+	 * @return A Response object with resultSize field set to the given
+	 *         resultSize
+	 */
 	private Response buildResultSizeResponse(int size) {
 		Response response = new Response();
 		response.setToResultSize(size);
@@ -813,10 +946,26 @@ public class Server {
 	/*
 	 * Methods for sending a response, a string, and a file
 	 */
+	/**
+	 * Sends a Response object to the output
+	 * 
+	 * @param response
+	 *            The Response object to be sent
+	 * @param output
+	 *            The DataOutputStream object the object shall be sent to
+	 */
 	private void sendResponse(Response response, DataOutputStream output) {
 		sendString(response.toJson(), output);
 	}
 
+	/**
+	 * Sends a string to the output
+	 * 
+	 * @param string
+	 *            The string to be sent
+	 * @param output
+	 *            The DataOutputStream object the string shall be sent to
+	 */
 	private void sendString(String string, DataOutputStream output) {
 		try {
 			output.writeUTF(string);
@@ -828,9 +977,12 @@ public class Server {
 	}
 
 	/**
+	 * Sends a file in bytes to the OutputStream
 	 * 
 	 * @param file
+	 *            The file to be sent
 	 * @param out
+	 *            The OutoutStream to send the file to
 	 * @throws IOException
 	 */
 	private void sendFile(File file, OutputStream out) throws IOException {
