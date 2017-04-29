@@ -2,12 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="logging"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/commons-cli-1.4.jar"/>
-	<classpathentry kind="lib" path="lib/json-simple-1.1.1.jar"/>
-	<classpathentry kind="lib" path="lib/gson-2.8.0.jar"/>
-	<classpathentry kind="lib" path="lib/commons-lang3-3.5.jar"/>
-	<classpathentry kind="lib" path="lib/log4j-api-2.8.1.jar"/>
-	<classpathentry kind="lib" path="lib/log4j-core-2.8.1.jar"/>
+	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry exported="true" kind="lib" path="lib/commons-cli-1.4.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/json-simple-1.1.1.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/gson-2.8.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/commons-lang3-3.5.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/log4j-api-2.8.1.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/log4j-core-2.8.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
