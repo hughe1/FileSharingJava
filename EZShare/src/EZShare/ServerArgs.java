@@ -22,9 +22,11 @@ public class ServerArgs extends ArgsManager {
 	public static final String DEBUG_OPTION = "debug";
 	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeinterval";
 	public static final String PORT_OPTION = "port";
+	public static final String SPORT_OPTION = "sport";
 	public static final String SECRET_OPTION = "secret";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final Integer DEFAULT_SPORT = 3781;
 	// Large random string
 	public static final String DEFAULT_SECRET = UUID.randomUUID().toString();
 	public static String DEFAULT_HOST = "";
@@ -37,6 +39,7 @@ public class ServerArgs extends ArgsManager {
 		options.addOption(CONNECTION_INTERVAL_LIMIT_OPTION, true, "connection interval limit in seconds");
 		options.addOption(EXCHANGE_INTERVAL_OPTION, true, "exchange interval in seconds");
 		options.addOption(PORT_OPTION, true, "server port, an integer");
+		options.addOption(SPORT_OPTION, true, "secure server port, an integer");
 		options.addOption(SECRET_OPTION, true, "secret");
 		options.addOption(DEBUG_OPTION, false, "print debug information");
 	}

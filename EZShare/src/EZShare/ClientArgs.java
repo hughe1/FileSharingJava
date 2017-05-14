@@ -36,8 +36,10 @@ public class ClientArgs extends ArgsManager {
 	public static final String SHARE_OPTION = "share";
 	public static final String TAGS_OPTION = "tags";
 	public static final String URI_OPTION = "uri";
+	public static final String SECURE_OPTION = "secure";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final Integer DEFAULT_SPORT = 3781;
 	public static final Boolean DEFAULT_RELAY = true;
 
 	/**
@@ -67,6 +69,7 @@ public class ClientArgs extends ArgsManager {
 		options.addOption(TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
 		options.addOption(URI_OPTION, true, "resource URI");
 		options.addOption(RELAY_OPTION, true, "relay");
+		options.addOption(SECURE_OPTION, true, "secure connection");
 		// }
 	}
 
