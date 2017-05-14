@@ -68,6 +68,22 @@ public class ServerArgs extends ArgsManager {
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
 	}
+	
+	
+	/**
+	 * The getSafeSport method returns the secure server port specified in the
+	 * command-line arguments
+	 * 
+	 * @return the server port specified in the server arguments, if a port was
+	 *         not specified, the default port is returned
+	 */
+	public Integer getSafeSport() {
+
+		if (!this.hasOption(SPORT_OPTION)) {
+			return DEFAULT_SPORT;
+		}
+		return Integer.parseInt(this.getOptionValue(SPORT_OPTION));
+	}
 
 	/**
 	 * Gets a safe value of the host

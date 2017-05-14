@@ -11,6 +11,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
@@ -112,8 +115,24 @@ public class Server {
 	 */
 	public void listen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
+		
+		//Specify the keystore details (this can be specified as VM arguments as well)
+		//the keystore file contains an application's own certificate and private key
+		System.setProperty("javax.net.ssl.keyStore","serverKeystore/keystore.jks");
+		//Password to access the private key from the keystore file
+		System.setProperty("javax.net.ssl.keyStorePassword","somePassword");
+		// Enable debugging to view the handshake and communication which happens between the SSLClient and the SSLServer
+		System.setProperty("javax.net.debug","all");
 
 		try {
+			
+			//Create SSL server socket
+			SSLServerSocketFactory sslserversocketfactory = (SSLServerSocketFactory) SSLServerSocketFactory
+					.getDefault();
+			SSLServerSocket sslserversocket = (SSLServerSocket) sslserversocketfactory.createServerSocket(this.serverArgs.getSafeSport());
+			//SSLServerSocket sslserversocket = (SSLServerSocket) sslserversocketfactory.createServerSocket(3781);
+
+			
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 			ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort(), 0, inetAddress);
 
