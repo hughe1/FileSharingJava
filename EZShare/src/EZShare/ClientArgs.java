@@ -69,7 +69,7 @@ public class ClientArgs extends ArgsManager {
 		options.addOption(TAGS_OPTION, true, "resource tags, tag1,tag2,tag3,...");
 		options.addOption(URI_OPTION, true, "resource URI");
 		options.addOption(RELAY_OPTION, true, "relay");
-		options.addOption(SECURE_OPTION, true, "secure connection");
+		options.addOption(SECURE_OPTION, false, "secure connection");
 		// }
 	}
 
