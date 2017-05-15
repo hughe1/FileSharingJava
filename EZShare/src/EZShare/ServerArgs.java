@@ -22,9 +22,11 @@ public class ServerArgs extends ArgsManager {
 	public static final String DEBUG_OPTION = "debug";
 	public static final String EXCHANGE_INTERVAL_OPTION = "exchangeinterval";
 	public static final String PORT_OPTION = "port";
+	public static final String SPORT_OPTION = "sport";
 	public static final String SECRET_OPTION = "secret";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final Integer DEFAULT_SPORT = 3781;
 	// Large random string
 	public static final String DEFAULT_SECRET = UUID.randomUUID().toString();
 	public static String DEFAULT_HOST = "";
@@ -37,6 +39,7 @@ public class ServerArgs extends ArgsManager {
 		options.addOption(CONNECTION_INTERVAL_LIMIT_OPTION, true, "connection interval limit in seconds");
 		options.addOption(EXCHANGE_INTERVAL_OPTION, true, "exchange interval in seconds");
 		options.addOption(PORT_OPTION, true, "server port, an integer");
+		options.addOption(SPORT_OPTION, true, "secure server port, an integer");
 		options.addOption(SECRET_OPTION, true, "secret");
 		options.addOption(DEBUG_OPTION, false, "print debug information");
 	}
@@ -64,6 +67,22 @@ public class ServerArgs extends ArgsManager {
 			return DEFAULT_PORT;
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
+	}
+	
+	
+	/**
+	 * The getSafeSport method returns the secure server port specified in the
+	 * command-line arguments
+	 * 
+	 * @return the server port specified in the server arguments, if a port was
+	 *         not specified, the default port is returned
+	 */
+	public Integer getSafeSport() {
+
+		if (!this.hasOption(SPORT_OPTION)) {
+			return DEFAULT_SPORT;
+		}
+		return Integer.parseInt(this.getOptionValue(SPORT_OPTION));
 	}
 
 	/**

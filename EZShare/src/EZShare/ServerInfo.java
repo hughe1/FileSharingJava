@@ -25,6 +25,8 @@ public class ServerInfo {
 		this.hostname = hostname;
 		this.port = port;
 	}
+	
+	
 
 	@Override
 	public int hashCode() {
@@ -75,7 +77,7 @@ public class ServerInfo {
 	public int getPort() {
 		return port;
 	}
-
+	
 	@Override
 	public String toString() {
 		return "{\"" + this.hostname + "\":" + this.port + "}";

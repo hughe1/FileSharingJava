@@ -11,6 +11,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
@@ -66,6 +70,17 @@ public class Server {
 		// specified in command line arguments
 		new Server(args).listen();
 	}
+	
+	/**
+	 * Server listens for incoming connections
+	 * Secure connections on one thread, insecure on the other
+	 */
+	private void listen() {
+		Thread secureThread = new Thread(() -> secureListen());
+		secureThread.start();
+		Thread insecureThread = new Thread(() -> insecureListen());
+		insecureThread.start();
+	}
 
 	/**
 	 * Constructor for Server
@@ -108,27 +123,79 @@ public class Server {
 		}
 		logger.info("Using secret " + this.serverArgs.getSafeSecret());
 		logger.info("Using advertised hostname " + this.serverArgs.getSafeHost());
-		logger.info("Bound to port " + this.serverArgs.getSafePort());
+		logger.info("Bound to insecure port " + this.serverArgs.getSafePort());
+		logger.info("Bound to secure port " + this.serverArgs.getSafeSport());
+
 	}
 
 	/**
-	 * It initiates the server. The only method that one should call after
-	 * instantiating a Server object.
+	 * Listens for insecure connections
 	 */
-	public void listen() {
+	public void insecureListen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
-
+		
 		try {
+			
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 			ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort(), 0, inetAddress);
 
-			logger.info("Listening for request...");
+			logger.info("Listening for insecure request...");
 			this.setExchangeTimer();
 
 			// Wait for connection
 			while (true) {
 				Socket client = server.accept();
-				logger.info("Received request");
+
+				logger.info("Received insecure request");
+
+				if (isFrequentClient(client)) {
+					// "An incoming request that violates the request interval
+					// limit will
+					// be closed immediately with no response."
+					client.close();
+				} else {
+					// otherwise server the client
+					Thread t = new Thread(() -> this.serveClient(client));
+					t.start();
+				}
+			}
+		} catch (IOException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/**
+	 * Listens for secure connections
+	 */
+	public void secureListen() {
+		
+		//Specify the keystore details (this can be specified as VM arguments as well)
+		//the keystore file contains an application's own certificate and private key
+		System.setProperty("javax.net.ssl.keyStore","serverKeystore/keystore.jks");
+		//Password to access the private key from the keystore file
+		System.setProperty("javax.net.ssl.keyStorePassword","somePassword");
+		// Enable debugging to view the handshake and communication which happens between the SSLClient and the SSLServer
+		//System.setProperty("javax.net.debug","all");
+
+		try {
+			
+			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
+
+			SSLServerSocketFactory sslserversocketfactory = (SSLServerSocketFactory) SSLServerSocketFactory
+					.getDefault();
+			SSLServerSocket sslserversocket = (SSLServerSocket) sslserversocketfactory.createServerSocket(this.serverArgs.getSafeSport(),0,inetAddress);
+
+			logger.info("Listening for secure request...");
+			this.setExchangeTimer();
+
+			// Wait for connection
+			while (true) {
+				SSLSocket client = (SSLSocket) sslserversocket.accept();
+				//Socket client = server.accept();
+
+				logger.info("Received secure request");
 
 				if (isFrequentClient(client)) {
 					// "An incoming request that violates the request interval

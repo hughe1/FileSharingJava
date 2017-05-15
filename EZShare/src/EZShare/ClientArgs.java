@@ -38,11 +38,13 @@ public class ClientArgs extends ArgsManager {
 	public static final String TAGS_OPTION = "tags";
 	public static final String UNSUBSCRIBE_OPTION = "unsubscribe";
 	public static final String URI_OPTION = "uri";
+	public static final String SECURE_OPTION = "secure";
 
 	public static final Integer DEFAULT_PORT = 3780;
+	public static final Integer DEFAULT_SPORT = 3781;
 	public static final Boolean DEFAULT_RELAY = true;
 	public static final String DEFAULT_ID = "X";
-	
+
 	/**
 	 * The static initializer adds all commands/options known to an EZShare
 	 * client to the class' Option descriptor.
@@ -72,6 +74,7 @@ public class ClientArgs extends ArgsManager {
 		options.addOption(RELAY_OPTION, true, "relay");
 		options.addOption(SUBSCRIBE_OPTION, false, "subscribe to resource");
 		options.addOption(UNSUBSCRIBE_OPTION, false, "unsubscribe from resource");
+		options.addOption(SECURE_OPTION, false, "secure connection");
 		// }
 	}
 
@@ -137,12 +140,12 @@ public class ClientArgs extends ArgsManager {
 			num_command++;
 			command = REMOVE_OPTION;
 		}
-		
+
 		if (hasOption(SUBSCRIBE_OPTION)) {
 			num_command++;
 			command = SUBSCRIBE_OPTION;
 		}
-		
+
 		if (hasOption(UNSUBSCRIBE_OPTION)) {
 			num_command++;
 			command = UNSUBSCRIBE_OPTION;
@@ -164,9 +167,13 @@ public class ClientArgs extends ArgsManager {
 	 */
 	public Integer getSafePort() {
 		if (!this.hasOption(PORT_OPTION)) {
+			if (this.hasOption(SECURE_OPTION)) {
+				return DEFAULT_SPORT; // default secure port
+			}
 			return DEFAULT_PORT; // default port
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
+
 	}
 
 	/**

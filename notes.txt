@@ -1,0 +1,4 @@
+- behaviour when Sport is the same as port?
+- not sure if info logger needs to match the spec word for word. made some changes relating to secure and insecure connections
+- server pairs still just (host, port) - plan to keep two separate lists of secure and insecure server port pairs
+- can’t start 2 servers on same host without specifying different ports manually
