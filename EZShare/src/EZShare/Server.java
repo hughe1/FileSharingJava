@@ -63,8 +63,18 @@ public class Server {
 	public static void main(String[] args) {
 		// instantiate a server and have it listen on a port
 		// specified in command line arguments
-		//new Server(args).insecureListen();
-		new Server(args).secureListen();
+		new Server(args).listen();
+	}
+	
+	/**
+	 * Server listens for incoming connections
+	 * Secure connections on one thread, insecure on the other
+	 */
+	private void listen() {
+		Thread secureThread = new Thread(() -> secureListen());
+		secureThread.start();
+		Thread insecureThread = new Thread(() -> insecureListen());
+		insecureThread.start();
 	}
 
 	/**
@@ -114,8 +124,7 @@ public class Server {
 	}
 
 	/**
-	 * It initiates the server. The only method that one should call after
-	 * instantiating a Server object.
+	 * Listens for insecure connections
 	 */
 	public void insecureListen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
@@ -153,8 +162,7 @@ public class Server {
 	
 	
 	/**
-	 * It initiates the server. The only method that one should call after
-	 * instantiating a Server object.
+	 * Listens for secure connections
 	 */
 	public void secureListen() {
 		
