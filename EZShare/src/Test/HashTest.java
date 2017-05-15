@@ -7,7 +7,6 @@ import EZShare.Resource;
 public class HashTest {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
 		HashMap<Resource,String> map = new HashMap<>();
 		map.put(new Resource().fromJson("{\"uri\":\"koteski\"}"), "whatever");
 		map.put(new Resource().fromJson("{\"uri\":\"koteski\"}"), "whatever");

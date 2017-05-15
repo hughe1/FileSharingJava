@@ -59,7 +59,7 @@ public class Server {
 	private ConcurrentHashMap<Socket, String> subscriptions = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Socket, Resource> subscriptionTemplates = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Socket, Integer> subscriptionResultCount = new ConcurrentHashMap<>();
-	private ConcurrentHashMap<Socket, ArrayList<SubscriptionRelayThread>> relays = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Socket, ArrayList<SubscriptionRelayThread>> subscriptionRelays = new ConcurrentHashMap<>();
 
 	private ServerArgs serverArgs;
 
@@ -70,10 +70,10 @@ public class Server {
 		// specified in command line arguments
 		new Server(args).listen();
 	}
-	
+
 	/**
-	 * Server listens for incoming connections
-	 * Secure connections on one thread, insecure on the other
+	 * Server listens for incoming connections Secure connections on one thread,
+	 * insecure on the other
 	 */
 	private void listen() {
 		Thread secureThread = new Thread(() -> secureListen());
@@ -92,7 +92,6 @@ public class Server {
 		serverArgs = new ServerArgs(args);
 		this.setupLogger();
 		this.printServerInfo();
-		// TODO: populate resources from file/Database
 	}
 
 	/**
@@ -133,9 +132,9 @@ public class Server {
 	 */
 	public void insecureListen() {
 		ServerSocketFactory factory = ServerSocketFactory.getDefault();
-		
+
 		try {
-			
+
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 			ServerSocket server = factory.createServerSocket(this.serverArgs.getSafePort(), 0, inetAddress);
 
@@ -164,28 +163,31 @@ public class Server {
 			e.printStackTrace();
 		}
 	}
-	
-	
+
 	/**
 	 * Listens for secure connections
 	 */
 	public void secureListen() {
-		
-		//Specify the keystore details (this can be specified as VM arguments as well)
-		//the keystore file contains an application's own certificate and private key
-		System.setProperty("javax.net.ssl.keyStore","serverKeystore/keystore.jks");
-		//Password to access the private key from the keystore file
-		System.setProperty("javax.net.ssl.keyStorePassword","somePassword");
-		// Enable debugging to view the handshake and communication which happens between the SSLClient and the SSLServer
-		//System.setProperty("javax.net.debug","all");
+
+		// Specify the keystore details (this can be specified as VM arguments
+		// as well)
+		// the keystore file contains an application's own certificate and
+		// private key
+		System.setProperty("javax.net.ssl.keyStore", "serverKeystore/keystore.jks");
+		// Password to access the private key from the keystore file
+		System.setProperty("javax.net.ssl.keyStorePassword", "somePassword");
+		// Enable debugging to view the handshake and communication which
+		// happens between the SSLClient and the SSLServer
+		// System.setProperty("javax.net.debug","all");
 
 		try {
-			
+
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 
 			SSLServerSocketFactory sslserversocketfactory = (SSLServerSocketFactory) SSLServerSocketFactory
 					.getDefault();
-			SSLServerSocket sslserversocket = (SSLServerSocket) sslserversocketfactory.createServerSocket(this.serverArgs.getSafeSport(),0,inetAddress);
+			SSLServerSocket sslserversocket = (SSLServerSocket) sslserversocketfactory
+					.createServerSocket(this.serverArgs.getSafeSport(), 0, inetAddress);
 
 			logger.info("Listening for secure request...");
 			this.setExchangeTimer();
@@ -193,7 +195,7 @@ public class Server {
 			// Wait for connection
 			while (true) {
 				SSLSocket client = (SSLSocket) sslserversocket.accept();
-				//Socket client = server.accept();
+				// Socket client = server.accept();
 
 				logger.info("Received secure request");
 
@@ -275,8 +277,6 @@ public class Server {
 			if (command == null) {
 				processMissingOrIncorrectTypeForCommand(output);
 			} else {
-				boolean closeClient = true;
-
 				if (!parseCommandForErrors(command, output)) {
 					substituteNullFields(command);
 
@@ -301,7 +301,36 @@ public class Server {
 						break;
 					case Command.SUBSCRIBE_COMMAND:
 						processSubscribeCommand(command, output, clientSocket);
-						closeClient = false;
+						// SUBSCRIBE request --> wait for UNSUBSCRIBE
+						boolean run = true;
+
+						// Make sure socket doesn't time out
+						clientSocket.setSoTimeout(0);
+						while (run) {
+							request = receiveUTF(input);
+
+							// Test if request is JSON valid
+							command = getSafeCommand(request);
+
+							if (command == null) {
+								// Ignore
+								// processMissingOrIncorrectTypeForCommand(output);
+							} else {
+								if (!parseCommandForErrors(command, output)) {
+									substituteNullFields(command);
+
+									switch (command.getCommand()) {
+									case Command.UNSUBSCRIBE_COMMAND:
+										processUnsubscribeCommand(command, output, clientSocket);
+										run = false;
+										break;
+									default:
+										// Ignore
+										break;
+									}
+								}
+							}
+						}
 						break;
 					default:
 						processInvalidCommand(output);
@@ -309,43 +338,8 @@ public class Server {
 					}
 				}
 
-				if (closeClient) {
-					clientSocket.close();
-				} else {
-					// SUBSCRIBE request --> wait for UNSUBSCRIBE
-					boolean run = true;
-
-					// Make sure socket doesn't time out
-					clientSocket.setSoTimeout(0);
-					while (run) {
-						request = receiveUTF(input);
-
-						// Test if request is JSON valid
-						command = getSafeCommand(request);
-
-						if (command == null) {
-							// Ignore
-							// processMissingOrIncorrectTypeForCommand(output);
-						} else {
-							if (!parseCommandForErrors(command, output)) {
-								substituteNullFields(command);
-
-								switch (command.getCommand()) {
-								case Command.UNSUBSCRIBE_COMMAND:
-									processUnsubscribeCommand(command, output, clientSocket);
-									run = false;
-									clientSocket.close();
-									break;
-								default:
-									// Ignore
-									break;
-								}
-							}
-						}
-					}
-				}
+				clientSocket.close();
 			}
-
 		} catch (SocketTimeoutException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
@@ -515,7 +509,7 @@ public class Server {
 
 					// SUCCESS
 					command.getResource()
-					.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+							.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 					this.resources.put(command.getResource(), command.getResource().getOwner());
 					response = buildSuccessResponse();
 
@@ -714,12 +708,11 @@ public class Server {
 									new DataOutputStream(socket.getOutputStream()), socket);
 							relayThread.start();
 
-							ArrayList<SubscriptionRelayThread> list = this.relays.get(socket);
+							ArrayList<SubscriptionRelayThread> list = this.subscriptionRelays.get(socket);
 							list.add(relayThread);
-							this.relays.put(socket, list);
+							this.subscriptionRelays.put(socket, list);
 						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+							logger.error(e.getClass().getName() + " " + e.getMessage());
 						}
 
 					}
@@ -867,7 +860,7 @@ public class Server {
 						}
 
 						command.getResource()
-						.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+								.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
@@ -924,6 +917,16 @@ public class Server {
 		sendResponse(response, output);
 	}
 
+	/**
+	 * Processes a SUBSCRIBE command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 * @param socket
+	 *            The socket of the client
+	 */
 	private void processSubscribeCommand(Command command, DataOutputStream output, Socket socket) {
 		logger.debug("Processing SUBSCRIBE command");
 
@@ -932,19 +935,20 @@ public class Server {
 		} else if (command.getRelay() == null) {
 			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else if (command.getId() == null || command.getId().length() == 0) {
-			// TODO Error message "missing resource template" or "missing id"?
+			// TODO @Bobby Error message "missing resource template" or "missing
+			// id"?
 			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else {
 			String id = command.getId();
 
-			// TODO Better data type available?
+			// TODO @Bobby Better data type available?
 			this.subscriptionTemplates.put(socket, command.getResourceTemplate());
 			this.subscriptions.put(socket, id);
 
 			sendResponse(buildSuccessResponseWithId(id), output);
 
 			int count = 0;
-			// TODO Better way that iterating over whole map??
+			// TODO @Bobby Better way that iterating over whole map??
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
@@ -952,7 +956,7 @@ public class Server {
 				if (isMatchingResource(command.getResourceTemplate(), resource)) {
 					count++;
 
-					// TODO Setting owner to '*' needed??
+					// TODO @Bobby Setting owner to '*' needed??
 					// "The server will never reveal the owner of a resource in
 					// a response. If a resource has an owner then it will be
 					// replaced with the "*" character."
@@ -977,10 +981,20 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Processes a SUBSCRIBE relay
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 * @param socket
+	 *            The socket of the client
+	 */
 	private void processSubscriptionRelay(Command command, DataOutputStream output, Socket socket) {
 		logger.debug("Relaying subscription...");
 
-		// TODO Setting owner & channel to default needed??
+		// TODO @Bobby Setting owner & channel to default needed??
 
 		// "The owner and channel information in the original query are
 		// both set to "" in the forwarded query"
@@ -990,7 +1004,9 @@ public class Server {
 		// "Relay field is set to false"
 		command.setRelay(false);
 
-		// TODO Forward subscription to only (un)secure servers
+		// TODO @Huge&Annie Forward subscription to only secure or unsecure
+		// servers depending on security of socket
+
 		// Forward subscription to all servers in servers list
 		ArrayList<SubscriptionRelayThread> threads = new ArrayList<>();
 
@@ -1004,9 +1020,15 @@ public class Server {
 			threads.add(relayThread);
 		}
 
-		this.relays.put(socket, threads);
+		this.subscriptionRelays.put(socket, threads);
 	}
 
+	/**
+	 * A thread to handle subscription relays
+	 * 
+	 * @author alexandrafritzen
+	 *
+	 */
 	class SubscriptionRelayThread extends Thread {
 		private Socket socket;
 		private Socket clientSocket;
@@ -1016,6 +1038,18 @@ public class Server {
 		private DataOutputStream outputToServer;
 		private DataInputStream inputFomServer;
 
+		/**
+		 * Constructor
+		 * 
+		 * @param serverInfo
+		 *            The ServerInfo object of the server to be relayed to
+		 * @param command
+		 *            The command to send to the server
+		 * @param output
+		 *            The DataOutputStream to the client
+		 * @param clientSocket
+		 *            The socket of the client
+		 */
 		public SubscriptionRelayThread(ServerInfo serverInfo, Command command, DataOutputStream output,
 				Socket clientSocket) {
 			this.serverInfo = serverInfo;
@@ -1024,6 +1058,9 @@ public class Server {
 			this.clientSocket = clientSocket;
 		}
 
+		/**
+		 * Runs the thread
+		 */
 		public void run() {
 			try {
 				this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
@@ -1050,7 +1087,7 @@ public class Server {
 						run = false;
 					} else {
 						sendString(fromServer, this.outputToClient);
-						addToCount(clientSocket);
+						addToResultCountOfSocket(clientSocket);
 					}
 				}
 				socket.close();
@@ -1062,6 +1099,9 @@ public class Server {
 			}
 		}
 
+		/**
+		 * Sends an unsubscribe Command object to the server
+		 */
 		public void unsubscribe() {
 			String[] unsubscribeArgs = { "-unsubscribe" };
 			ClientArgs unsubArgs = new ClientArgs(unsubscribeArgs);
@@ -1071,7 +1111,14 @@ public class Server {
 		}
 	}
 
-	private void addToCount(Socket socket) {
+	/**
+	 * Adds 1 to the result count of the socket subscription
+	 * 
+	 * @param socket
+	 *            The socket that is the key in the subscriptionResultCount
+	 *            hashmap
+	 */
+	private void addToResultCountOfSocket(Socket socket) {
 		int count = 0;
 		if (this.subscriptionResultCount.containsKey(socket)) {
 			count = this.subscriptionResultCount.get(socket);
@@ -1080,13 +1127,21 @@ public class Server {
 		this.subscriptionResultCount.put(socket, count);
 	}
 
+	/**
+	 * Is called when a resource has been added/overwritten using a SHARE or
+	 * PUBLISH command and sends that resource to all matching subscribers
+	 * 
+	 * @param resource
+	 *            The resource that was added/overwritten
+	 */
 	private void onAddedResource(Resource resource) {
+		logger.debug("Forwarding added resource to subscribers...");
 		for (ConcurrentHashMap.Entry<Socket, Resource> entry : this.subscriptionTemplates.entrySet()) {
 			Socket socket = entry.getKey();
 			Resource template = entry.getValue();
 
 			if (isMatchingResource(template, resource)) {
-				addToCount(socket);
+				addToResultCountOfSocket(socket);
 
 				// "The server will never reveal the owner of a resource in
 				// a response. If a resource has an owner then it will be
@@ -1110,11 +1165,22 @@ public class Server {
 		}
 	}
 
+	/**
+	 * Processes an UNSUBSCRIBE command
+	 * 
+	 * @param command
+	 *            The Command object to be used
+	 * @param output
+	 *            The DataOutputStream of the socket to send messages to
+	 * @param socket
+	 *            The socket of the client
+	 */
 	private void processUnsubscribeCommand(Command command, DataOutputStream output, Socket socket) {
 		logger.debug("Processing UNSUBSCRIBE command");
 
 		if (command.getId() == null || command.getId().length() == 0) {
-			// TODO Error message "missing resource template" or "missing id"?
+			// TODO @Bobby Error message "missing resource template" or "missing
+			// id"?
 			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else {
 			int size = 0;
@@ -1126,17 +1192,16 @@ public class Server {
 			subscriptionResultCount.remove(socket);
 			subscriptionTemplates.remove(socket);
 
-			if (this.relays.containsKey(socket)) {
-				for (SubscriptionRelayThread thread : this.relays.get(socket)) {
+			if (this.subscriptionRelays.containsKey(socket)) {
+				for (SubscriptionRelayThread thread : this.subscriptionRelays.get(socket)) {
 					thread.unsubscribe();
 					try {
 						thread.join();
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						logger.error(e.getClass().getName() + " " + e.getMessage());
 					}
 				}
-				relays.remove(socket);
+				subscriptionRelays.remove(socket);
 			}
 			// "If all subscriptions are stopped and the connection is closed,
 			// the server responds with:"
@@ -1387,6 +1452,14 @@ public class Server {
 		in.close();
 	}
 
+	/**
+	 * Receives a UTF string from a given DataInputStream and logs it
+	 * 
+	 * @param in
+	 *            The DataInputStream to readUTF from
+	 * @return The string that was read
+	 * @throws IOException
+	 */
 	private String receiveUTF(DataInputStream in) throws IOException {
 		String string = in.readUTF();
 		logger.debug("RECEIVED: " + string);

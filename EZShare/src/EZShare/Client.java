@@ -139,15 +139,16 @@ public class Client {
 	}
 
 	/**
+	 * Parses the Client's clientArgs into a Command object
 	 * 
-	 * @return
+	 * @return The parsed Command object
 	 */
 	private Command parseCommand() {
 		return new Command(clientArgs);
 	}
 
 	/**
-	 * 
+	 * Configures the logger based on whether the client wrote "-debug" or not
 	 */
 	private void configLogger() {
 		// Configure logger
@@ -161,8 +162,9 @@ public class Client {
 	}
 
 	/**
+	 * Parses host and port into a ServerInfo object
 	 * 
-	 * @return
+	 * @return The parsed ServerInfo object
 	 */
 	private ServerInfo parseServerInfo() {
 		return new ServerInfo(clientArgs.getSafeHost(), clientArgs.getSafePort());
@@ -302,12 +304,29 @@ public class Client {
 		}
 	}
 
+	/**
+	 * Sends a string to the given DataOutputStream
+	 * 
+	 * @param string
+	 *            The string to be sent
+	 * @param output
+	 *            The DataOutputStream to send the string to via writeUTF()
+	 * @throws IOException
+	 */
 	private void sendString(String string, DataOutputStream output) throws IOException {
 		output.writeUTF(string);
 		output.flush();
 		logger.debug("SENT: " + string);
 	}
 
+	/**
+	 * Receives a string from the given DataInputStream and logs it
+	 * 
+	 * @param input
+	 *            The DataInputStream to read the string from
+	 * @return The read string
+	 * @throws IOException
+	 */
 	private String receiveString(DataInputStream input) throws IOException {
 		String message = input.readUTF();
 		logger.debug("RECEIVED: " + message);
