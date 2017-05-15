@@ -152,10 +152,15 @@ public class ClientArgs extends ArgsManager {
 	 */
 	public Integer getSafePort() {
 		if (!this.hasOption(PORT_OPTION)) {
+			if (this.hasOption(SECURE_OPTION)) {
+				return DEFAULT_SPORT; // default secure port
+			}
 			return DEFAULT_PORT; // default port
 		}
 		return Integer.parseInt(this.getOptionValue(PORT_OPTION));
+		
 	}
+	
 
 	/**
 	 * The getSafeHost method returns the server host specified in the

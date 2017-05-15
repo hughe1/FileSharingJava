@@ -9,6 +9,10 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +30,7 @@ public class Client {
 	private Logger logger;
 	private ClientArgs clientArgs;
 	private Socket socket;
+	//private SSLSocket socket;
 	private ServerInfo serverInfo;
 
 	public static void main(String[] args) {
@@ -60,7 +65,30 @@ public class Client {
 		} else {
 			try {
 				logger.info("Connecting to host " + serverInfo.getHostname() + " at port " + serverInfo.getPort());
-				this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+				
+				
+				if (clientArgs.hasOption(ClientArgs.SECURE_OPTION)) {
+					
+					// Create secure socket
+					
+					//Location of the Java keystore file containing the collection of 
+					//certificates trusted by this application (trust store).
+					System.setProperty("javax.net.ssl.trustStore", "clientKeyStore/keystore.jks");
+					
+					// Debug option
+					//System.setProperty("javax.net.debug","all");
+					
+					//Create SSL socket and connect it to the remote server 
+					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+					this.socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),serverInfo.getPort());
+				}
+				else {
+					
+					// Create insecure socket
+					this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+				}
+				
+				
 				// wait for TIME_OUT_LIMIT seconds
 				this.socket.setSoTimeout(TIME_OUT_LIMIT);
 
