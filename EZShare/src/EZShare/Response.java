@@ -17,6 +17,7 @@ public class Response extends JsonModel {
 	public static final String ERROR_TEXT = "error";
 
 	private String response;
+	private String id;
 	private String errorMessage;
 	private Integer resultSize;
 
@@ -28,18 +29,28 @@ public class Response extends JsonModel {
 		this.response = SUCCESS_TEXT;
 		this.errorMessage = null;
 		this.resultSize = null;
+		this.id = null;
 	}
 
 	public void setToError(String errorMessage) {
 		this.response = ERROR_TEXT;
 		this.errorMessage = errorMessage;
 		this.resultSize = null;
+		this.id = null;
 	}
 
 	public void setToResultSize(int resultSize) {
 		this.response = null;
 		this.errorMessage = null;
 		this.resultSize = resultSize;
+		this.id = null;
+	}
+
+	public void setToId(String id) {
+		this.response = SUCCESS_TEXT;
+		this.errorMessage = null;
+		this.resultSize = null;
+		this.id = id;
 	}
 
 	/* Getters for response fields. */

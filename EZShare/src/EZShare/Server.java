@@ -52,6 +52,11 @@ public class Server {
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
 	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
 
+	private ConcurrentHashMap<Socket, String> subscriptions = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Socket, Resource> subscriptionTemplates = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Socket, Integer> subscriptionResultCount = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Socket, ArrayList<SubscriptionRelayThread>> relays = new ConcurrentHashMap<>();
+
 	private ServerArgs serverArgs;
 
 	private static Logger logger;
@@ -195,8 +200,7 @@ public class Server {
 			DataInputStream input = new DataInputStream(clientSocket.getInputStream());
 			DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
 
-			String request = input.readUTF();
-			logger.debug("RECEIVED: " + request);
+			String request = receiveUTF(input);
 
 			// Test if request is JSON valid
 			Command command = getSafeCommand(request);
@@ -204,9 +208,11 @@ public class Server {
 			if (command == null) {
 				processMissingOrIncorrectTypeForCommand(output);
 			} else {
+				boolean closeClient = true;
+
 				if (!parseCommandForErrors(command, output)) {
 					substituteNullFields(command);
-					
+
 					switch (command.getCommand()) {
 					case Command.QUERY_COMMAND:
 						processQueryCommand(command, output);
@@ -226,13 +232,51 @@ public class Server {
 					case Command.REMOVE_COMMAND:
 						processRemoveCommand(command, output);
 						break;
+					case Command.SUBSCRIBE_COMMAND:
+						processSubscribeCommand(command, output, clientSocket);
+						closeClient = false;
+						break;
 					default:
 						processInvalidCommand(output);
 						break;
 					}
 				}
 
-				clientSocket.close();
+				if (closeClient) {
+					clientSocket.close();
+				} else {
+					// SUBSCRIBE request --> wait for UNSUBSCRIBE
+					boolean run = true;
+
+					// Make sure socket doesn't time out
+					clientSocket.setSoTimeout(0);
+					while (run) {
+						request = receiveUTF(input);
+
+						// Test if request is JSON valid
+						command = getSafeCommand(request);
+
+						if (command == null) {
+							// Ignore
+							// processMissingOrIncorrectTypeForCommand(output);
+						} else {
+							if (!parseCommandForErrors(command, output)) {
+								substituteNullFields(command);
+
+								switch (command.getCommand()) {
+								case Command.UNSUBSCRIBE_COMMAND:
+									processUnsubscribeCommand(command, output, clientSocket);
+									run = false;
+									clientSocket.close();
+									break;
+								default:
+									// Ignore
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
 
 		} catch (SocketTimeoutException e) {
@@ -331,16 +375,18 @@ public class Server {
 
 	/**
 	 * Substitutes any null fields in the command with the default value
-	 * @param command The command to be checked
+	 * 
+	 * @param command
+	 *            The command to be checked
 	 */
 	private void substituteNullFields(Command command) {
 		if (command.getResource() != null) {
 			command.getResource().setNullResourceFieldsToDefault();
 		} else if (command.getResourceTemplate() != null) {
-			command.getResourceTemplate().setNullResourceFieldsToDefault();			
+			command.getResourceTemplate().setNullResourceFieldsToDefault();
 		}
 	}
-	
+
 	/**
 	 * Processes an invalid command
 	 * 
@@ -405,6 +451,9 @@ public class Server {
 					.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 					this.resources.put(command.getResource(), command.getResource().getOwner());
 					response = buildSuccessResponse();
+
+					// Notify subscriptions
+					onAddedResource(command.getResource());
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
@@ -496,7 +545,7 @@ public class Server {
 			ServerInfo serverInfo = entry.getKey();
 
 			// Create a new thread for each ServerInfo object
-			Thread relayThread = new Thread("RelayHandler") {
+			Thread relayThread = new Thread("QueryRelayHandler") {
 				@Override
 				public void run() {
 					try {
@@ -513,8 +562,7 @@ public class Server {
 						int resourceCount = 0;
 						boolean run = false;
 						do {
-							String fromServer = inFromServer.readUTF();
-							logger.debug("RECEIVED: " + fromServer);
+							String fromServer = receiveUTF(inFromServer);
 							if (fromServer.contains("success")) {
 								run = true;
 							}
@@ -580,6 +628,34 @@ public class Server {
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
 					// Add server to server list
 					servers.put(serverInfo, true);
+
+					// Extend subscriptions to include these servers
+					for (ConcurrentHashMap.Entry<Socket, Resource> entry : this.subscriptionTemplates.entrySet()) {
+						Socket socket = entry.getKey();
+						Resource resource = entry.getValue();
+						String id = this.subscriptions.get(socket);
+
+						Command subCommand = new Command();
+						subCommand.setCommand(Command.SUBSCRIBE_COMMAND);
+						subCommand.setId(id);
+						subCommand.setRelay(false);
+						subCommand.setResourceTemplate(resource);
+
+						try {
+							// Create a new thread for each ServerInfo object
+							SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, subCommand,
+									new DataOutputStream(socket.getOutputStream()), socket);
+							relayThread.start();
+
+							ArrayList<SubscriptionRelayThread> list = this.relays.get(socket);
+							list.add(relayThread);
+							this.relays.put(socket, list);
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+
+					}
 				}
 			}
 
@@ -728,7 +804,11 @@ public class Server {
 						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
-						logger.debug("successfully stored a resource: " + command.getResource());
+
+						logger.debug("Successfully stored a resource: " + command.getResource());
+
+						// Notify subscriptions
+						onAddedResource(command.getResource());
 					}
 				}
 			} catch (URISyntaxException e) {
@@ -775,6 +855,226 @@ public class Server {
 		}
 
 		sendResponse(response, output);
+	}
+
+	private void processSubscribeCommand(Command command, DataOutputStream output, Socket socket) {
+		logger.debug("Processing SUBSCRIBE command");
+
+		if (command.getResourceTemplate() == null) {
+			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
+		} else if (command.getRelay() == null) {
+			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
+		} else if (command.getId() == null || command.getId().length() == 0) {
+			// TODO Error message "missing resource template" or "missing id"?
+			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
+		} else {
+			String id = command.getId();
+
+			// TODO Better data type available?
+			this.subscriptionTemplates.put(socket, command.getResourceTemplate());
+			this.subscriptions.put(socket, id);
+
+			sendResponse(buildSuccessResponseWithId(id), output);
+
+			int count = 0;
+			// TODO Better way that iterating over whole map??
+			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
+				Resource resource = entry.getKey();
+				String owner = entry.getValue();
+
+				if (isMatchingResource(command.getResourceTemplate(), resource)) {
+					count++;
+
+					// TODO Setting owner to '*' needed??
+					// "The server will never reveal the owner of a resource in
+					// a response. If a resource has an owner then it will be
+					// replaced with the "*" character."
+					if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
+						resource.setOwner(Resource.HIDDEN_OWNER);
+					}
+
+					sendString(resource.toJson(), output);
+
+					// Reset owner
+					resource.setOwner(owner);
+				}
+			}
+
+			this.subscriptionResultCount.put(socket, count);
+
+			// Relay subscription to all servers in server list
+			if (command.getRelay()) {
+				processSubscriptionRelay(command, output, socket);
+			}
+
+		}
+	}
+
+	private void processSubscriptionRelay(Command command, DataOutputStream output, Socket socket) {
+		logger.debug("Relaying subscription...");
+
+		// TODO Setting owner & channel to default needed??
+
+		// "The owner and channel information in the original query are
+		// both set to "" in the forwarded query"
+		command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
+		command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
+
+		// "Relay field is set to false"
+		command.setRelay(false);
+
+		// TODO Forward subscription to only (un)secure servers
+		// Forward subscription to all servers in servers list
+		ArrayList<SubscriptionRelayThread> threads = new ArrayList<>();
+
+		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
+			ServerInfo serverInfo = entry.getKey();
+
+			// Create a new thread for each ServerInfo object
+			SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, command, output, socket);
+			relayThread.start();
+
+			threads.add(relayThread);
+		}
+
+		this.relays.put(socket, threads);
+	}
+
+	class SubscriptionRelayThread extends Thread {
+		private Socket socket;
+		private Socket clientSocket;
+		private ServerInfo serverInfo;
+		private Command command;
+		private DataOutputStream outputToClient;
+		private DataOutputStream outputToServer;
+		private DataInputStream inputFomServer;
+
+		public SubscriptionRelayThread(ServerInfo serverInfo, Command command, DataOutputStream output,
+				Socket clientSocket) {
+			this.serverInfo = serverInfo;
+			this.command = command;
+			this.outputToClient = output;
+			this.clientSocket = clientSocket;
+		}
+
+		public void run() {
+			try {
+				this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+				this.socket.setSoTimeout(0);
+				this.socket.setKeepAlive(true);
+
+				this.inputFomServer = new DataInputStream(socket.getInputStream());
+				this.outputToServer = new DataOutputStream(socket.getOutputStream());
+
+				sendString(command.toJson(), outputToServer);
+
+				String fromServer = receiveUTF(inputFomServer);
+
+				boolean run = false;
+				if (fromServer.contains("success")) {
+					logger.info("1!");
+					run = true;
+				}
+
+				while (run) {
+					fromServer = receiveUTF(inputFomServer);
+
+					if (fromServer.contains("resultSize") || fromServer.contains("error")) {
+						run = false;
+					} else {
+						sendString(fromServer, this.outputToClient);
+						addToCount(clientSocket);
+					}
+				}
+				socket.close();
+			} catch (UnknownHostException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+				removeServer(serverInfo);
+			} catch (IOException e) {
+				logger.error(e.getClass().getName() + " " + e.getMessage());
+			}
+		}
+
+		public void unsubscribe() {
+			String[] unsubscribeArgs = { "-unsubscribe" };
+			ClientArgs unsubArgs = new ClientArgs(unsubscribeArgs);
+			Command unsubscribeCommand = new Command(unsubArgs);
+
+			sendString(unsubscribeCommand.toJson(), this.outputToServer);
+		}
+	}
+
+	private void addToCount(Socket socket) {
+		int count = 0;
+		if (this.subscriptionResultCount.containsKey(socket)) {
+			count = this.subscriptionResultCount.get(socket);
+		}
+		count++;
+		this.subscriptionResultCount.put(socket, count);
+	}
+
+	private void onAddedResource(Resource resource) {
+		for (ConcurrentHashMap.Entry<Socket, Resource> entry : this.subscriptionTemplates.entrySet()) {
+			Socket socket = entry.getKey();
+			Resource template = entry.getValue();
+
+			if (isMatchingResource(template, resource)) {
+				addToCount(socket);
+
+				// "The server will never reveal the owner of a resource in
+				// a response. If a resource has an owner then it will be
+				// replaced with the "*" character."
+				String owner = resource.getOwner();
+				if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
+					resource.setOwner(Resource.HIDDEN_OWNER);
+				}
+
+				// Send matching resource to subscribed client
+				try {
+					DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+					sendString(resource.toJson(), output);
+				} catch (IOException e) {
+					logger.error(e.getClass().getName() + " " + e.getMessage());
+				}
+
+				// Reset owner
+				resource.setOwner(owner);
+			}
+		}
+	}
+
+	private void processUnsubscribeCommand(Command command, DataOutputStream output, Socket socket) {
+		logger.debug("Processing UNSUBSCRIBE command");
+
+		if (command.getId() == null || command.getId().length() == 0) {
+			// TODO Error message "missing resource template" or "missing id"?
+			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
+		} else {
+			int size = 0;
+			if (this.subscriptionResultCount.containsKey(socket)) {
+				size = this.subscriptionResultCount.get(socket);
+			}
+
+			subscriptions.remove(socket);
+			subscriptionResultCount.remove(socket);
+			subscriptionTemplates.remove(socket);
+
+			if (this.relays.containsKey(socket)) {
+				for (SubscriptionRelayThread thread : this.relays.get(socket)) {
+					thread.unsubscribe();
+					try {
+						thread.join();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				relays.remove(socket);
+			}
+			// "If all subscriptions are stopped and the connection is closed,
+			// the server responds with:"
+			sendResponse(buildResultSizeResponse(size), output);
+		}
 	}
 
 	/**
@@ -854,11 +1154,7 @@ public class Server {
 					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
-						// TODO AF This check needed? Project says: "It provides
-						// the
-						// selected server with a copy of its entire Server
-						// Records
-						// list."
+
 						if (!randomServer.equals(serverInfo)) {
 							serversAsString += serverInfo.getHostname() + ":" + serverInfo.getPort() + ",";
 						}
@@ -883,8 +1179,7 @@ public class Server {
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
 						sendString(command.toJson(), outToServer);
-						String fromServer = inFromServer.readUTF();
-						logger.debug("RECEIVED: " + fromServer);
+						String fromServer = receiveUTF(inFromServer);
 						if (!fromServer.contains("success")) {
 							removeServer(randomServer);
 						}
@@ -928,6 +1223,18 @@ public class Server {
 	private Response buildSuccessResponse() {
 		Response response = new Response();
 		response.setToSuccess();
+		return response;
+	}
+
+	/**
+	 * Builds a success response with a subscription id
+	 * 
+	 * @return A Response object with response field set to "success" and the id
+	 *         field set to the given id
+	 */
+	private Response buildSuccessResponseWithId(String id) {
+		Response response = new Response();
+		response.setToId(id);
 		return response;
 	}
 
@@ -1011,5 +1318,11 @@ public class Server {
 			out.write(bytes, 0, count);
 		}
 		in.close();
+	}
+
+	private String receiveUTF(DataInputStream in) throws IOException {
+		String string = in.readUTF();
+		logger.debug("RECEIVED: " + string);
+		return string;
 	}
 }

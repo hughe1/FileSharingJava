@@ -25,11 +25,14 @@ public class Command extends JsonModel {
 	public static final String QUERY_COMMAND = "QUERY";
 	public static final String REMOVE_COMMAND = "REMOVE";
 	public static final String SHARE_COMMAND = "SHARE";
+	public static final String SUBSCRIBE_COMMAND = "SUBSCRIBE";
+	public static final String UNSUBSCRIBE_COMMAND = "UNSUBSCRIBE";
 	
 	public static final String RESOURCE_OPTION = "resource";
 	public static final String RESOURCE_TEMPLATE_OPTION = "resourceTemplate";
 
 	private String command;
+	private String id;
 	private String secret;
 	private Boolean relay;
 	private Resource resource;
@@ -72,6 +75,12 @@ public class Command extends JsonModel {
 		case REMOVE_COMMAND:
 			buildRemove(clientArgs);
 			break;
+		case SUBSCRIBE_COMMAND:
+			buildSubscribe(clientArgs);
+			break;
+		case UNSUBSCRIBE_COMMAND:
+			buildUnsubscribe(clientArgs);
+			break;
 		default:
 			break;
 		}
@@ -83,7 +92,7 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the query options provided.
+	 * @return a Command object corresponding to the query options provided.
 	 */
 	public Command buildQuery(ClientArgs clientArgs) {
 		this.command = QUERY_COMMAND;
@@ -98,7 +107,7 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the publish options provided.
+	 * @return a Command object corresponding to the publish options provided.
 	 */
 	public Command buildPublish(ClientArgs clientArgs) {
 		this.command = PUBLISH_COMMAND;
@@ -112,7 +121,7 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the exchange options provided.
+	 * @return a Command object corresponding to the exchange options provided.
 	 */
 	public Command buildExchange(ClientArgs clientArgs) {
 		this.command = EXCHANGE_COMMAND;
@@ -131,7 +140,7 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the fetch options provided.
+	 * @return a Command object corresponding to the fetch options provided.
 	 */
 	public Command buildFetch(ClientArgs clientArgs) {
 		this.command = FETCH_COMMAND;
@@ -145,7 +154,7 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the share options provided.
+	 * @return a Command object corresponding to the share options provided.
 	 */
 	public Command buildShare(ClientArgs clientArgs) {
 		this.command = SHARE_COMMAND;
@@ -160,11 +169,41 @@ public class Command extends JsonModel {
 	 * client arguments.
 	 * 
 	 * @param clientArgs
-	 * @return a Command object corresponding the the remove options provided.
+	 * @return a Command object corresponding to the remove options provided.
 	 */
 	public Command buildRemove(ClientArgs clientArgs) {
 		this.command = REMOVE_COMMAND;
 		this.resource = new Resource(clientArgs);
+		return this;
+	}
+	
+	/**
+	 * Builds a subscribe Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
+	 * 
+	 * @param clientArgs
+	 * @return a Command object corresponding to the subscribe options provided.
+	 */
+	public Command buildSubscribe(ClientArgs clientArgs) {
+		this.command = SUBSCRIBE_COMMAND;
+		this.id = ClientArgs.DEFAULT_ID;
+		this.relay = clientArgs.getSafeRelay();
+		this.resourceTemplate = new Resource(clientArgs);
+		return this;
+	}
+	
+	/**
+	 * Builds a remove Command based on the arguments in a given a ClientArgs
+	 * object. Only fields relevant to the command are set according to the
+	 * client arguments.
+	 * 
+	 * @param clientArgs
+	 * @return a Command object corresponding the the remove options provided.
+	 */
+	public Command buildUnsubscribe(ClientArgs clientArgs) {
+		this.command = UNSUBSCRIBE_COMMAND;
+		this.id = ClientArgs.DEFAULT_ID;
 		return this;
 	}
 
@@ -201,6 +240,10 @@ public class Command extends JsonModel {
 		return command;
 	}
 
+	public void setCommand(String command) {
+		this.command = command;
+	}
+	
 	public String getSecret() {
 		return secret;
 	}
@@ -239,6 +282,14 @@ public class Command extends JsonModel {
 
 	public void setServerList(ArrayList<ServerInfo> serverList) {
 		this.serverList = serverList;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	@Override

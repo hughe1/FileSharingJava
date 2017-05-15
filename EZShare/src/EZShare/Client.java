@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import org.apache.logging.log4j.LogManager;
@@ -61,7 +62,6 @@ public class Client {
 			try {
 				logger.info("Connecting to host " + serverInfo.getHostname() + " at port " + serverInfo.getPort());
 				this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
-				// wait for TIME_OUT_LIMIT seconds
 				this.socket.setSoTimeout(TIME_OUT_LIMIT);
 
 				DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
@@ -70,8 +70,7 @@ public class Client {
 				this.submitCommand(command, outToServer);
 
 				// block call, wait for client response
-				String fromServer = inFromServer.readUTF();
-				logger.debug("RECEIVED: " + fromServer);
+				String fromServer = receiveString(inFromServer);
 				if (fromServer.contains("error")) {
 					// onError
 					Response response = new Response().fromJson(fromServer);
@@ -79,7 +78,7 @@ public class Client {
 				} else if (fromServer.contains("success")) {
 					// onSuccess
 					logger.info("Success!");
-					this.onSuccess(command, inFromServer);
+					this.onSuccess(command, inFromServer, outToServer);
 				} else {
 					// something went wrong
 					logger.error("Something went wrong when receiving reponse from Server");
@@ -107,10 +106,8 @@ public class Client {
 	 *             if method cannot write to the output stream
 	 */
 	private void submitCommand(Command command, DataOutputStream outToServer) throws IOException {
-		outToServer.writeUTF(command.toJson());
 		logger.info("Sending " + command.getCommand() + " command...");
-		outToServer.flush();
-		logger.debug("SENT: " + command.toJson());
+		sendString(command.toJson(), outToServer);
 		logger.info(command.getCommand() + " command sent. Waiting for response..");
 	}
 
@@ -153,7 +150,8 @@ public class Client {
 	 * @throws IOException
 	 * @throws SocketTimeoutException
 	 */
-	private void onSuccess(Command command, DataInputStream inFromServer) throws SocketTimeoutException, IOException {
+	private void onSuccess(Command command, DataInputStream inFromServer, DataOutputStream outToServer)
+			throws SocketTimeoutException, IOException {
 		// publish, remove, share, exchange -> only print the response
 		// query, fetch -> have to deal with these dynamically
 		switch (command.getCommand()) {
@@ -162,6 +160,9 @@ public class Client {
 			break;
 		case Command.FETCH_COMMAND:
 			this.processFetch(inFromServer);
+			break;
+		case Command.SUBSCRIBE_COMMAND:
+			this.processSubscribe(inFromServer, outToServer);
 			break;
 		default:
 			// not much to do here
@@ -178,8 +179,7 @@ public class Client {
 	 * @throws IOException
 	 */
 	private void processFetch(DataInputStream inFromServer) throws IOException {
-		String resourceString = inFromServer.readUTF();
-		this.logger.debug("RECEIVED: " + resourceString);
+		String resourceString = receiveString(inFromServer);
 		Resource resource = new Resource().fromJson(resourceString);
 
 		// Get file name
@@ -187,7 +187,7 @@ public class Client {
 		String fileName = strings[strings.length - 1];
 
 		this.receiveFile(fileName, resource.getResourceSize());
-		this.logger.debug("RECEIVED: " + inFromServer.readUTF());
+		receiveString(inFromServer);
 	}
 
 	/**
@@ -202,8 +202,7 @@ public class Client {
 	private void processQuery(DataInputStream inFromServer) throws SocketTimeoutException, IOException {
 		boolean run = true;
 		while (run) {
-			String fromServer = inFromServer.readUTF();
-			logger.debug("RECEIVED: " + fromServer);
+			String fromServer = receiveString(inFromServer);
 			if (fromServer.contains("resultSize")) {
 				Response response = new Response().fromJson(fromServer);
 				run = false;
@@ -212,6 +211,80 @@ public class Client {
 				logger.info(fromServer);
 			}
 		}
+	}
+
+	/**
+	 * Responsible for processing a subscribe command. By the time this method
+	 * is called, the client has already called readUTF once. This method should
+	 * process anything after the initial JSON object from the server.
+	 * 
+	 * @param inFromServer
+	 * @throws SocketTimeoutException,
+	 *             IOException
+	 */
+	private void processSubscribe(DataInputStream inFromServer, DataOutputStream outToServer) {
+		// Make sure socket doesn't timeout or die
+		try {
+			this.socket.setKeepAlive(true);
+			this.socket.setSoTimeout(0);
+		} catch (SocketException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
+
+		Thread subscriptionThread = new Thread("SubscriptionHandler") {
+			@Override
+			public void run() {
+				boolean run = true;
+				try {
+					while (run) {
+						String fromServer = receiveString(inFromServer);
+
+						if (fromServer.contains("resultSize")) {
+							Response response = new Response().fromJson(fromServer);
+							logger.info("Successfully unsubscribed. Found " + response.getResultSize() + " results.");
+							run = false;
+						} else if (fromServer.contains("error")) {
+							Response response = new Response().fromJson(fromServer);
+							logger.error("Error: " + response.getErrorMessage());
+							run = false;
+						}
+					}
+				} catch (IOException e) {
+					logger.error(e.getClass().getName() + " " + e.getMessage());
+				}
+			}
+		};
+		subscriptionThread.start();
+
+		try {
+			// "When the user presses ENTER, i.e. a line is read from standard
+			// input..."
+			System.in.read();
+
+			// "... then the client will UNSUBSCRIBE and can then terminate."
+			String[] unsubscribeArgs = { "-unsubscribe" };
+			ClientArgs unsubArgs = new ClientArgs(unsubscribeArgs);
+			Command unsubscribeCommand = new Command(unsubArgs);
+			this.submitCommand(unsubscribeCommand, outToServer);
+
+			subscriptionThread.join();
+		} catch (IOException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		} catch (InterruptedException e) {
+			logger.error(e.getClass().getName() + " " + e.getMessage());
+		}
+	}
+
+	private void sendString(String string, DataOutputStream output) throws IOException {
+		output.writeUTF(string);
+		output.flush();
+		logger.debug("SENT: " + string);
+	}
+
+	private String receiveString(DataInputStream input) throws IOException {
+		String message = input.readUTF();
+		logger.debug("RECEIVED: " + message);
+		return message;
 	}
 
 	/**
