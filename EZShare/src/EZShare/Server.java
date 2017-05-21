@@ -124,7 +124,6 @@ public class Server {
 		logger.info("Using advertised hostname " + this.serverArgs.getSafeHost());
 		logger.info("Bound to insecure port " + this.serverArgs.getSafePort());
 		logger.info("Bound to secure port " + this.serverArgs.getSafeSport());
-
 	}
 
 	/**
@@ -514,7 +513,11 @@ public class Server {
 					response = buildSuccessResponse();
 
 					// Notify subscriptions
-					onAddedResource(command.getResource());
+					// if this is in a thread it will be asynchronous! i.e., the program goes on.
+					new Thread(() -> onAddedResource(command.getResource())).start();
+					// TODO @alex, check this is ok and remove the comment below
+					// onAddedResource(command.getResource());
+					
 				}
 			} catch (URISyntaxException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
@@ -935,20 +938,21 @@ public class Server {
 		} else if (command.getRelay() == null) {
 			sendResponse(buildErrorResponse(ERROR_INVALID_RESOURCE_TEMPLATE), output);
 		} else if (command.getId() == null || command.getId().length() == 0) {
-			// TODO @Bobby Error message "missing resource template" or "missing
-			// id"?
+			// TODO @alex Error message "missing resource template" or "missing id"?
+			// from spec: Same error messages can be sent for the id field, if it is missing or not of the correct type.
+			// so i think its ok to send missing resource error.
 			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else {
 			String id = command.getId();
 
-			// TODO @Bobby Better data type available?
+			// TODO @alex Better data type available?
+			// could use tuples, but i think a map is fine!
 			this.subscriptionTemplates.put(socket, command.getResourceTemplate());
 			this.subscriptions.put(socket, id);
 
 			sendResponse(buildSuccessResponseWithId(id), output);
 
 			int count = 0;
-			// TODO @Bobby Better way that iterating over whole map??
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
@@ -956,10 +960,12 @@ public class Server {
 				if (isMatchingResource(command.getResourceTemplate(), resource)) {
 					count++;
 
-					// TODO @Bobby Setting owner to '*' needed??
+					// TODO @alex Setting owner to '*' needed??
 					// "The server will never reveal the owner of a resource in
 					// a response. If a resource has an owner then it will be
 					// replaced with the "*" character."
+					// @alex not sure what you need me to do here? looks like you are
+					// hiding the owner already
 					if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
 						resource.setOwner(Resource.HIDDEN_OWNER);
 					}
@@ -998,6 +1004,9 @@ public class Server {
 
 		// "The owner and channel information in the original query are
 		// both set to "" in the forwarded query"
+		
+		// TODO @alex, won't this result in more matches? 
+		// I thought matches are based on uri, owner and channel?
 		command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
 		command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
 
@@ -1179,8 +1188,9 @@ public class Server {
 		logger.debug("Processing UNSUBSCRIBE command");
 
 		if (command.getId() == null || command.getId().length() == 0) {
-			// TODO @Bobby Error message "missing resource template" or "missing
+			// TODO @alex Error message "missing resource template" or "missing
 			// id"?
+			// as above, i think its fine what you are doing
 			sendResponse(buildErrorResponse(ERROR_MISSING_RESOURCE_TEMPLATE), output);
 		} else {
 			int size = 0;
