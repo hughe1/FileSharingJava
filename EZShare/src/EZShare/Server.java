@@ -14,6 +14,7 @@ import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -1288,7 +1289,7 @@ public class Server {
 			this.source = source;
 		}
 		
-		private void doExchange(ConcurrentHashMap<ServerInfo, Boolean> serverList) {
+		private void doExchange(ConcurrentHashMap<ServerInfo, Boolean> serverList, boolean secure) {
 			if (serverList.size() > 0) {
 				// "The server contacts a randomly selected server from the
 				// Server Records ..."
@@ -1312,17 +1313,52 @@ public class Server {
 					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
 
 					// "... and initiates an EXCHANGE command with it."
+					String secureString = "";
+					String sPortString = "";
+					String hostString = "";
+					String sPort = "";
+					String host = "";
+					if (secure ) { 
+						secureString = "-secure";
+						sPortString = Integer.toString(randomServer.getPort());
+						sPort = "-sport";
+						host = "-host";
+						hostString = (String)randomServer.getHostname();
+					}
 					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION,
-							serversAsString };
-					ClientArgs exchangeArgs = new ClientArgs(args);
-					Command command = new Command().buildExchange(exchangeArgs);
-
+							serversAsString, secureString, sPort, sPortString, host, hostString };
+					
+					//ClientArgs exchangeArgs = new ClientArgs(args);
+					//Command command = new Command().buildExchange(exchangeArgs);
+					
+					
+					Client.main(args);
+					
+/*
 					try {
-						Socket socket = new Socket();
-						SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(),
-								randomServer.getPort());
-						socket.connect(socketAddress, TIME_OUT_LIMIT);
+						
+						Socket socket;
+						SocketAddress socketAddress;
+						
+						if (secure) {
+							
 
+							
+							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+							socket = (SSLSocket) sslsocketfactory.createSocket(randomServer.getHostname(),
+									randomServer.getPort());
+									
+							
+						}
+						else {
+							socket = new Socket();
+							socketAddress = new InetSocketAddress(randomServer.getHostname(),
+									randomServer.getPort());
+							
+							socket.connect(socketAddress, TIME_OUT_LIMIT);
+						}
+						
+						
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
 
@@ -1339,20 +1375,24 @@ public class Server {
 					} catch (IOException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						removeServer(randomServer);
-					}
+					} */
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
 				}
 			} else {
-				logger.info("No server in server list");
+				String secureText = "insecure";
+				if (secure) {
+					secureText = "secure";
+				}
+				logger.info("No "+secureText+" server in server list");
 			}
 		}
 
 		public void run() {
 			logger.info("Exchanging insecure server list...");
-			doExchange(servers);
+			doExchange(servers, false);
 			logger.info("Exchanging secure server list...");
-			doExchange(secureServers);
+			doExchange(secureServers, true);
 		}
 	}
 
