@@ -54,6 +54,8 @@ public class Server {
 
 	private ConcurrentHashMap<Resource, String> resources = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<ServerInfo, Boolean> servers = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<ServerInfo, Boolean> secureServers = new ConcurrentHashMap<>();
+
 	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
 
 	private ConcurrentHashMap<Socket, String> subscriptions = new ConcurrentHashMap<>();
@@ -153,7 +155,7 @@ public class Server {
 					client.close();
 				} else {
 					// otherwise server the client
-					Thread t = new Thread(() -> this.serveClient(client));
+					Thread t = new Thread(() -> this.serveClient(client, false));
 					t.start();
 				}
 			}
@@ -189,7 +191,6 @@ public class Server {
 					.createServerSocket(this.serverArgs.getSafeSport(), 0, inetAddress);
 
 			logger.info("Listening for secure request...");
-			this.setExchangeTimer();
 
 			// Wait for connection
 			while (true) {
@@ -205,7 +206,7 @@ public class Server {
 					client.close();
 				} else {
 					// otherwise server the client
-					Thread t = new Thread(() -> this.serveClient(client));
+					Thread t = new Thread(() -> this.serveClient(client, true));
 					t.start();
 				}
 			}
@@ -262,7 +263,7 @@ public class Server {
 	 * @param client
 	 *            Socket connection from a client.
 	 */
-	private void serveClient(Socket client) {
+	private void serveClient(Socket client, boolean secure) {
 		try (Socket clientSocket = client) {
 			clientSocket.setSoTimeout(TIME_OUT_LIMIT);
 			DataInputStream input = new DataInputStream(clientSocket.getInputStream());
@@ -287,7 +288,7 @@ public class Server {
 						processFetchCommand(command, output, clientSocket.getOutputStream());
 						break;
 					case Command.EXCHANGE_COMMAND:
-						processExchangeCommand(command, output);
+						processExchangeCommand(command, output, secure);
 						break;
 					case Command.PUBLISH_COMMAND:
 						processPublishCommand(command, output);
@@ -680,7 +681,7 @@ public class Server {
 	 * @param output
 	 *            The DataOutputStream of the socket to send messages to
 	 */
-	private void processExchangeCommand(Command command, DataOutputStream output) {
+	private void processExchangeCommand(Command command, DataOutputStream output, boolean secure) {
 		logger.debug("Processing EXCHANGE command");
 
 		if (command.getServerList() == null || command.getServerList().size() == 0) {
@@ -691,7 +692,13 @@ public class Server {
 				if (!serverInfo.getHostname().equals(serverArgs.getSafeHost())
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
 					// Add server to server list
-					servers.put(serverInfo, true);
+					
+					if (secure) {
+						secureServers.put(serverInfo, true);
+					}
+					else {
+						servers.put(serverInfo, true);
+					}
 
 					// Extend subscriptions to include these servers
 					for (ConcurrentHashMap.Entry<Socket, Resource> entry : this.subscriptionTemplates.entrySet()) {
@@ -1280,21 +1287,20 @@ public class Server {
 			super();
 			this.source = source;
 		}
-
-		public void run() {
-			logger.info("Exchanging server list...");
-			if (servers.size() > 0) {
+		
+		private void doExchange(ConcurrentHashMap<ServerInfo, Boolean> serverList) {
+			if (serverList.size() > 0) {
 				// "The server contacts a randomly selected server from the
 				// Server Records ..."
-				int randomServerLocation = ThreadLocalRandom.current().nextInt(0, servers.size());
-				List<ServerInfo> keysAsArray = new ArrayList<ServerInfo>(servers.keySet());
+				int randomServerLocation = ThreadLocalRandom.current().nextInt(0, serverList.size());
+				List<ServerInfo> keysAsArray = new ArrayList<ServerInfo>(serverList.keySet());
 				ServerInfo randomServer = keysAsArray.get(randomServerLocation);
 
 				logger.debug("Randomly selected server " + randomServer.getHostname() + ":" + randomServer.getPort());
 				if (this.source == null || !this.source.equals(randomServer)) {
 					// Make servers JSON appropriate
 					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
-					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : servers.entrySet()) {
+					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
 
 						if (!randomServer.equals(serverInfo)) {
@@ -1340,6 +1346,13 @@ public class Server {
 			} else {
 				logger.info("No server in server list");
 			}
+		}
+
+		public void run() {
+			logger.info("Exchanging insecure server list...");
+			doExchange(servers);
+			logger.info("Exchanging secure server list...");
+			doExchange(secureServers);
 		}
 	}
 
