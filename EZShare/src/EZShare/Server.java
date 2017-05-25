@@ -14,7 +14,6 @@ import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -1327,7 +1326,12 @@ public class Server {
 					
 					// submit client
 					logger.debug("Creating a client object with args:" + args);
-					new Client(args.split(" ")).run();
+					if(new Client(args.split(" ")).run() == false) {
+						// if a connection was not possible remove server from list
+						logger.info("Unable to connect to " + randomServer.toString());
+						removeServer(randomServer);
+					}
+					
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
 				}
@@ -1349,15 +1353,26 @@ public class Server {
 	}
 
 	/**
-	 * Removes a given server from the server list
+	 * Removes a given server from the server list. The method looks in
+	 * both the server and secureServer maps and removes it if present.
+	 * If none of the maps contain the server, a msg is printed to the screen.
 	 * 
 	 * @param serverInfo
 	 *            The ServerInfo object to be removed
 	 */
 	private void removeServer(ServerInfo serverInfo) {
-		logger.debug("Removing server " + serverInfo.toString() + " from server list");
-		servers.remove(serverInfo);
-		// TODO @bk
+		logger.debug("Trying to remove server " + serverInfo.toString() + " from server list");
+		if (servers.containsKey(serverInfo)) {
+			servers.remove(serverInfo);
+			logger.info(serverInfo.toString() + " found in insecure servers and removed it successfully.");
+		}
+		else if (secureServers.containsKey(serverInfo)) {
+			secureServers.remove(serverInfo);
+			logger.info(serverInfo.toString() + " found in secure servers and removed it successfully.");
+		}
+		else {
+			logger.info("Unable to find & remove " + serverInfo.toString() + " from the list of servers.");
+		}
 	}
 
 	/*

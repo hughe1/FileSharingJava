@@ -55,14 +55,18 @@ public class Client {
 	 * The only method that should be called after creating a client object. It
 	 * is responsible for doing the client work. Furthermore, it establishes a
 	 * connection with the server, sends a command and processes the response.
+	 * 
+	 * @param returns true if it ran successfully, and false if something went
+	 * wrong.
 	 */
-	public void run() {
+	public boolean run() {
 		Command command = this.parseCommand();
 
 		if (command.getCommand() == null) {
 			// No command found
 			logger.error("No or too many commands found.");
 			clientArgs.printArgsHelp("Client");
+			return false;
 		} else {
 			try {
 				logger.info("Connecting to host " + serverInfo.getHostname() + " at port " + serverInfo.getPort());
@@ -111,13 +115,17 @@ public class Client {
 					logger.error("Something went wrong when receiving reponse from Server");
 				}
 				socket.close();
+				return true;
 
 			} catch (UnknownHostException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
+				return false;
 			} catch (SocketTimeoutException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
+				return false;
 			} catch (IOException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
+				return false;
 			}
 		}
 	}
