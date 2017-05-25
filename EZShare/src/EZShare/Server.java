@@ -621,7 +621,7 @@ public class Server {
 					try {
 						Socket socket = null;
 						if (secure) {
-							System.setProperty("javax.net.ssl.trustStore", "clientKeyStore/keystore.jks");
+							System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
 							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 							socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
 									serverInfo.getPort());
@@ -1089,8 +1089,7 @@ public class Server {
 		public void run() {
 			try {
 				if (secure) {
-					// System.setProperty("javax.net.ssl.trustStore",
-					// "clientKeyStore/keystore.jks");
+					System.setProperty("javax.net.ssl.trustStore","clientKeystore/keystore.jks");
 
 					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 					this.socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
@@ -1349,7 +1348,7 @@ public class Server {
 						if (secure) {
 							System.setProperty("javax.net.debug","all");
 
-							System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
+							System.setProperty("javax.net.ssl.trustStore", "serverKeystore/keystore.jks");
 							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 							socket = (SSLSocket) sslsocketfactory.createSocket(randomServer.getHostname(),
 									randomServer.getPort());
