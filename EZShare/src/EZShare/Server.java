@@ -1300,7 +1300,10 @@ public class Server {
 				logger.debug("Randomly selected server " + randomServer.getHostname() + ":" + randomServer.getPort());
 				if (this.source == null || !this.source.equals(randomServer)) {
 					// Make servers JSON appropriate
-					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
+					String serversAsString;
+					if(secure) serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafeSport() + ",";
+					else serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
+					
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
 
@@ -1312,70 +1315,21 @@ public class Server {
 					// Remove last comma of string
 					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
 
-					// "... and initiates an EXCHANGE command with it."
-					String secureString = "";
-					String sPortString = "";
-					String hostString = "";
-					String sPort = "";
-					String host = "";
-					if (secure ) { 
-						secureString = "-secure";
-						sPortString = Integer.toString(randomServer.getPort());
-						sPort = "-sport";
-						host = "-host";
-						hostString = (String)randomServer.getHostname();
+					// build an exchange command and reuse Client code
+					String args = "-exchange ";
+					args += "-host " + randomServer.getHostname() + " ";
+					args += "-port " + randomServer.getPort() + " ";
+					args += "-servers " + serversAsString + " ";
+					
+					if (secure) {
+						args += "-secure";
 					}
-					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION,
-							serversAsString, secureString, sPort, sPortString, host, hostString };
 					
-					//ClientArgs exchangeArgs = new ClientArgs(args);
-					//Command command = new Command().buildExchange(exchangeArgs);
+					System.out.println("trying to connect to " + randomServer);
+					System.out.println(args);		
 					
-					
-					Client.main(args);
-					
-/*
-					try {
-						
-						Socket socket;
-						SocketAddress socketAddress;
-						
-						if (secure) {
-							
-
-							
-							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-							socket = (SSLSocket) sslsocketfactory.createSocket(randomServer.getHostname(),
-									randomServer.getPort());
-									
-							
-						}
-						else {
-							socket = new Socket();
-							socketAddress = new InetSocketAddress(randomServer.getHostname(),
-									randomServer.getPort());
-							
-							socket.connect(socketAddress, TIME_OUT_LIMIT);
-						}
-						
-						
-						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
-						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
-
-						sendString(command.toJson(), outToServer);
-						String fromServer = receiveUTF(inFromServer);
-						if (!fromServer.contains("success")) {
-							removeServer(randomServer);
-						}
-
-						socket.close();
-					} catch (UnknownHostException e) {
-						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(randomServer);
-					} catch (IOException e) {
-						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(randomServer);
-					} */
+					// submit client
+					new Client(args.split(" ")).run();
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
 				}
@@ -1405,6 +1359,7 @@ public class Server {
 	private void removeServer(ServerInfo serverInfo) {
 		logger.debug("Removing server " + serverInfo.toString() + " from server list");
 		servers.remove(serverInfo);
+		// TODO @bk
 	}
 
 	/*

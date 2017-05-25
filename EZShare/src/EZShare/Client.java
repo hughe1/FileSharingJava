@@ -45,7 +45,7 @@ public class Client {
 	 * @param args
 	 *            String[] command line arguments
 	 */
-	private Client(String[] args) {
+	public Client(String[] args) {
 		this.clientArgs = new ClientArgs(args);
 		this.configLogger();
 		this.serverInfo = this.parseServerInfo();
