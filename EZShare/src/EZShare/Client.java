@@ -74,10 +74,10 @@ public class Client {
 					// Location of the Java keystore file containing the
 					// collection of
 					// certificates trusted by this application (trust store).
-					System.setProperty("javax.net.ssl.trustStore", "clientKeyStore/keystore.jks");
+					System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
 
 					// Debug option
-					// System.setProperty("javax.net.debug","all");
+					//System.setProperty("javax.net.debug","all");
 
 					// Create SSL socket and connect it to the remote server
 					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();

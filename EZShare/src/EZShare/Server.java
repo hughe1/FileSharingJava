@@ -14,6 +14,7 @@ import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -195,7 +196,6 @@ public class Server {
 			// Wait for connection
 			while (true) {
 				SSLSocket client = (SSLSocket) sslserversocket.accept();
-				// Socket client = server.accept();
 
 				logger.info("Received secure request");
 
@@ -282,7 +282,7 @@ public class Server {
 
 					switch (command.getCommand()) {
 					case Command.QUERY_COMMAND:
-						processQueryCommand(command, output);
+						processQueryCommand(command, output, secure);
 						break;
 					case Command.FETCH_COMMAND:
 						processFetchCommand(command, output, clientSocket.getOutputStream());
@@ -300,7 +300,7 @@ public class Server {
 						processRemoveCommand(command, output);
 						break;
 					case Command.SUBSCRIBE_COMMAND:
-						processSubscribeCommand(command, output, clientSocket);
+						processSubscribeCommand(command, output, clientSocket, secure);
 						// SUBSCRIBE request --> wait for UNSUBSCRIBE
 						boolean run = true;
 
@@ -535,7 +535,7 @@ public class Server {
 	 * @param output
 	 *            The DataOutputStream of the socket to send messages to
 	 */
-	private void processQueryCommand(Command command, DataOutputStream output) {
+	private void processQueryCommand(Command command, DataOutputStream output, boolean secure) {
 		logger.debug("Processing QUERY command");
 
 		if (command.getResourceTemplate() == null) {
@@ -572,7 +572,7 @@ public class Server {
 
 			// Relay query to all servers in server list
 			if (command.getRelay()) {
-				count += processQueryRelay(command, output);
+				count += processQueryRelay(command, output, secure);
 			}
 
 			sendResponse(buildResultSizeResponse(count), output);
@@ -588,7 +588,7 @@ public class Server {
 	 *            The DataOutputStream of the socket to send messages to
 	 * @return The number of resources found
 	 */
-	private int processQueryRelay(Command command, DataOutputStream output) {
+	private int processQueryRelay(Command command, DataOutputStream output, boolean secure) {
 		logger.debug("Relaying query...");
 		int count = 0;
 
@@ -603,8 +603,15 @@ public class Server {
 		final CountDownLatch latch = new CountDownLatch(this.servers.size());
 		final ArrayList<Integer> countArray = new ArrayList<>();
 
+		ConcurrentHashMap<ServerInfo, Boolean> serverList = null;
+		if (secure) {
+			serverList = this.secureServers;
+		} else {
+			serverList = this.servers;
+		}
+
 		// Forward query to all servers in servers list
-		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
+		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 			ServerInfo serverInfo = entry.getKey();
 
 			// Create a new thread for each ServerInfo object
@@ -612,10 +619,18 @@ public class Server {
 				@Override
 				public void run() {
 					try {
-						Socket socket = new Socket();
-						SocketAddress socketAddress = new InetSocketAddress(serverInfo.getHostname(),
-								serverInfo.getPort());
-						socket.connect(socketAddress, TIME_OUT_LIMIT);
+						Socket socket = null;
+						if (secure) {
+							System.setProperty("javax.net.ssl.trustStore", "clientKeyStore/keystore.jks");
+							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+							socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
+									serverInfo.getPort());
+						} else {
+							socket = new Socket();
+							SocketAddress socketAddress = new InetSocketAddress(serverInfo.getHostname(),
+									serverInfo.getPort());
+							socket.connect(socketAddress, TIME_OUT_LIMIT);
+						}
 
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
@@ -645,10 +660,10 @@ public class Server {
 						socket.close();
 					} catch (UnknownHostException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(serverInfo);
+						removeServer(serverInfo, secure);
 					} catch (IOException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(serverInfo);
+						removeServer(serverInfo, secure);
 					} finally {
 						latch.countDown();
 					}
@@ -690,11 +705,10 @@ public class Server {
 				if (!serverInfo.getHostname().equals(serverArgs.getSafeHost())
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
 					// Add server to server list
-					
+
 					if (secure) {
 						secureServers.put(serverInfo, true);
-					}
-					else {
+					} else {
 						servers.put(serverInfo, true);
 					}
 
@@ -714,7 +728,7 @@ public class Server {
 						try {
 							// Create a new thread for each ServerInfo object
 							SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, subCommand,
-									new DataOutputStream(socket.getOutputStream()), socket);
+									new DataOutputStream(socket.getOutputStream()), socket, secure);
 							relayThread.start();
 
 							ArrayList<SubscriptionRelayThread> list = entry.getValue();
@@ -936,7 +950,7 @@ public class Server {
 	 * @param socket
 	 *            The socket of the client
 	 */
-	private void processSubscribeCommand(Command command, DataOutputStream output, Socket socket) {
+	private void processSubscribeCommand(Command command, DataOutputStream output, Socket socket, boolean secure) {
 		logger.debug("Processing SUBSCRIBE command");
 
 		if (command.getResourceTemplate() == null) {
@@ -979,7 +993,7 @@ public class Server {
 
 			// Relay subscription to all servers in server list
 			if (command.getRelay()) {
-				processSubscriptionRelay(command, output, socket);
+				processSubscriptionRelay(command, output, socket, secure);
 			}
 
 		}
@@ -995,9 +1009,8 @@ public class Server {
 	 * @param socket
 	 *            The socket of the client
 	 */
-	private void processSubscriptionRelay(Command command, DataOutputStream output, Socket socket) {
+	private void processSubscriptionRelay(Command command, DataOutputStream output, Socket socket, boolean secure) {
 		logger.debug("Relaying subscription...");
-
 
 		// "The owner and channel information in the original query are
 		// both set to "" in the forwarded query"
@@ -1013,11 +1026,19 @@ public class Server {
 		// Forward subscription to all servers in servers list
 		ArrayList<SubscriptionRelayThread> threads = new ArrayList<>();
 
-		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : this.servers.entrySet()) {
+		ConcurrentHashMap<ServerInfo, Boolean> serverList = null;
+		if (secure) {
+			serverList = this.secureServers;
+		} else {
+			serverList = this.servers;
+		}
+
+		for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 			ServerInfo serverInfo = entry.getKey();
 
 			// Create a new thread for each ServerInfo object
-			SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, command, output, socket);
+			SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, command, output, socket,
+					secure);
 			relayThread.start();
 
 			threads.add(relayThread);
@@ -1040,6 +1061,7 @@ public class Server {
 		private DataOutputStream outputToClient;
 		private DataOutputStream outputToServer;
 		private DataInputStream inputFomServer;
+		private boolean secure;
 
 		/**
 		 * Constructor
@@ -1054,7 +1076,7 @@ public class Server {
 		 *            The socket of the client
 		 */
 		public SubscriptionRelayThread(ServerInfo serverInfo, Command command, DataOutputStream output,
-				Socket clientSocket) {
+				Socket clientSocket, boolean secure) {
 			this.serverInfo = serverInfo;
 			this.command = command;
 			this.outputToClient = output;
@@ -1066,7 +1088,17 @@ public class Server {
 		 */
 		public void run() {
 			try {
-				this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+				if (secure) {
+					// System.setProperty("javax.net.ssl.trustStore",
+					// "clientKeyStore/keystore.jks");
+
+					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+					this.socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
+							serverInfo.getPort());
+				} else {
+					this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
+				}
+
 				this.socket.setSoTimeout(0);
 				this.socket.setKeepAlive(true);
 
@@ -1079,7 +1111,6 @@ public class Server {
 
 				boolean run = false;
 				if (fromServer.contains("success")) {
-					logger.info("1!");
 					run = true;
 				}
 
@@ -1093,12 +1124,13 @@ public class Server {
 						addToResultCountOfSocket(clientSocket);
 					}
 				}
-				socket.close();
+				this.socket.close();
 			} catch (UnknownHostException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
-				removeServer(serverInfo);
+				removeServer(serverInfo, secure);
 			} catch (IOException e) {
 				logger.error(e.getClass().getName() + " " + e.getMessage());
+				removeServer(serverInfo, secure);
 			}
 		}
 
@@ -1271,8 +1303,8 @@ public class Server {
 			super();
 			this.source = source;
 		}
-		
-		private void doExchange(ConcurrentHashMap<ServerInfo, Boolean> serverList) {
+
+		private void doExchange(ConcurrentHashMap<ServerInfo, Boolean> serverList, boolean secure) {
 			if (serverList.size() > 0) {
 				// "The server contacts a randomly selected server from the
 				// Server Records ..."
@@ -1283,7 +1315,7 @@ public class Server {
 				logger.debug("Randomly selected server " + randomServer.getHostname() + ":" + randomServer.getPort());
 				if (this.source == null || !this.source.equals(randomServer)) {
 					// Make servers JSON appropriate
-					String serversAsString = serverArgs.getSafeHost() + ":" + serverArgs.getSafePort() + ",";
+					String serversAsString = serverArgs.getSafeHost() + ":" + (secure ? serverArgs.getSafeSport() : serverArgs.getSafePort()) + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
 
@@ -1295,17 +1327,38 @@ public class Server {
 					// Remove last comma of string
 					serversAsString = serversAsString.substring(0, serversAsString.length() - 1);
 
+					String secureString = "";
+					if (secure) {
+						secureString = "-secure";
+					}
+
 					// "... and initiates an EXCHANGE command with it."
 					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION,
-							serversAsString };
+							serversAsString, secureString };
+					// , secureString, "-port",
+					// Integer.toString(randomServer.getPort()), "-host",
+					// randomServer.getHostname() };
+
 					ClientArgs exchangeArgs = new ClientArgs(args);
 					Command command = new Command().buildExchange(exchangeArgs);
 
+					// Client.main(args);
+
 					try {
-						Socket socket = new Socket();
-						SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(),
-								randomServer.getPort());
-						socket.connect(socketAddress, TIME_OUT_LIMIT);
+						Socket socket = null;
+						if (secure) {
+							System.setProperty("javax.net.debug","all");
+
+							System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
+							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+							socket = (SSLSocket) sslsocketfactory.createSocket(randomServer.getHostname(),
+									randomServer.getPort());
+						} else {
+							socket = new Socket();
+							SocketAddress socketAddress = new InetSocketAddress(randomServer.getHostname(),
+									randomServer.getPort());
+							socket.connect(socketAddress, TIME_OUT_LIMIT);
+						}
 
 						DataInputStream inFromServer = new DataInputStream(socket.getInputStream());
 						DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
@@ -1313,30 +1366,36 @@ public class Server {
 						sendString(command.toJson(), outToServer);
 						String fromServer = receiveUTF(inFromServer);
 						if (!fromServer.contains("success")) {
-							removeServer(randomServer);
+							removeServer(randomServer, secure);
 						}
 
 						socket.close();
 					} catch (UnknownHostException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(randomServer);
+						removeServer(randomServer, secure);
+						e.printStackTrace();
 					} catch (IOException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
-						removeServer(randomServer);
+						removeServer(randomServer, secure);
+						e.printStackTrace();
 					}
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
 				}
 			} else {
-				logger.info("No server in server list");
+				String secureText = "insecure";
+				if (secure) {
+					secureText = "secure";
+				}
+				logger.info("No " + secureText + " server in server list");
 			}
 		}
 
 		public void run() {
 			logger.info("Exchanging insecure server list...");
-			doExchange(servers);
+			doExchange(servers, false);
 			logger.info("Exchanging secure server list...");
-			doExchange(secureServers);
+			doExchange(secureServers, true);
 		}
 	}
 
@@ -1346,9 +1405,14 @@ public class Server {
 	 * @param serverInfo
 	 *            The ServerInfo object to be removed
 	 */
-	private void removeServer(ServerInfo serverInfo) {
-		logger.debug("Removing server " + serverInfo.toString() + " from server list");
-		servers.remove(serverInfo);
+	private void removeServer(ServerInfo serverInfo, boolean secure) {
+		if (secure) {
+			logger.debug("Removing secure server " + serverInfo.toString() + " from server list");
+			secureServers.remove(serverInfo);
+		} else {
+			logger.debug("Removing insecure server " + serverInfo.toString() + " from server list");
+			servers.remove(serverInfo);
+		}
 	}
 
 	/*
