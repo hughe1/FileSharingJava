@@ -1325,10 +1325,8 @@ public class Server {
 						args += "-secure";
 					}
 					
-					System.out.println("trying to connect to " + randomServer);
-					System.out.println(args);		
-					
 					// submit client
+					logger.debug("Creating a client object with args:" + args);
 					new Client(args.split(" ")).run();
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
