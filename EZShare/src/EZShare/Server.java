@@ -162,7 +162,6 @@ public class Server {
 			}
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
-			e.printStackTrace();
 		}
 	}
 
@@ -178,6 +177,8 @@ public class Server {
 		System.setProperty("javax.net.ssl.keyStore", "serverKeystore/keystore.jks");
 		// Password to access the private key from the keystore file
 		System.setProperty("javax.net.ssl.keyStorePassword", "somePassword");
+		System.setProperty("javax.net.ssl.trustStore", "serverKeystore/keystore.jks");
+
 		// Enable debugging to view the handshake and communication which
 		// happens between the SSLClient and the SSLServer
 		// System.setProperty("javax.net.debug","all");
@@ -212,7 +213,6 @@ public class Server {
 			}
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
-			e.printStackTrace();
 		}
 	}
 
@@ -621,7 +621,6 @@ public class Server {
 					try {
 						Socket socket = null;
 						if (secure) {
-							System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
 							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 							socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
 									serverInfo.getPort());
@@ -1081,6 +1080,7 @@ public class Server {
 			this.command = command;
 			this.outputToClient = output;
 			this.clientSocket = clientSocket;
+			this.secure = secure;
 		}
 
 		/**
@@ -1089,8 +1089,6 @@ public class Server {
 		public void run() {
 			try {
 				if (secure) {
-					System.setProperty("javax.net.ssl.trustStore","clientKeystore/keystore.jks");
-
 					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 					this.socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
 							serverInfo.getPort());
@@ -1346,9 +1344,6 @@ public class Server {
 					try {
 						Socket socket = null;
 						if (secure) {
-							System.setProperty("javax.net.debug","all");
-
-							System.setProperty("javax.net.ssl.trustStore", "serverKeystore/keystore.jks");
 							SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 							socket = (SSLSocket) sslsocketfactory.createSocket(randomServer.getHostname(),
 									randomServer.getPort());
@@ -1372,11 +1367,9 @@ public class Server {
 					} catch (UnknownHostException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						removeServer(randomServer, secure);
-						e.printStackTrace();
 					} catch (IOException e) {
 						logger.error(e.getClass().getName() + " " + e.getMessage());
 						removeServer(randomServer, secure);
-						e.printStackTrace();
 					}
 				} else {
 					logger.info("Randomly selected server was exchange command source -- no action taken");
