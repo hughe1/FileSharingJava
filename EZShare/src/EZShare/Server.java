@@ -58,6 +58,7 @@ public class Server {
 	private ConcurrentHashMap<ServerInfo, Boolean> secureServers = new ConcurrentHashMap<>();
 
 	private HashMap<InetAddress, Long> clientAccesses = new HashMap<>();
+	private HashMap<InetAddress, Long> secureClientAccesses = new HashMap<>();
 
 	private ConcurrentHashMap<Socket, String> subscriptions = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Socket, Resource> subscriptionTemplates = new ConcurrentHashMap<>();
@@ -149,7 +150,7 @@ public class Server {
 
 				logger.info("Received insecure request");
 
-				if (isFrequentClient(client)) {
+				if (isFrequentClient(client, false)) {
 					// "An incoming request that violates the request interval
 					// limit will
 					// be closed immediately with no response."
@@ -200,7 +201,7 @@ public class Server {
 
 				logger.info("Received secure request");
 
-				if (isFrequentClient(client)) {
+				if (isFrequentClient(client, true)) {
 					// "An incoming request that violates the request interval
 					// limit will
 					// be closed immediately with no response."
@@ -226,15 +227,22 @@ public class Server {
 	 * @return true if the client has violated the time interval limit,
 	 *         otherwise return false.
 	 */
-	private boolean isFrequentClient(Socket client) {
+	private boolean isFrequentClient(Socket client, boolean secure) {
 		int limit = this.serverArgs.getSafeConnectionInterval();
 		// "The server will ensure that the time between successive
 		// connections from any IP address will be no less than a limit
 		// (1 second by default but configurable on the command line)."
-		Long timestamp = this.clientAccesses.get(client.getInetAddress());
 		Long currentTime = System.currentTimeMillis();
+		Long timestamp = null;
+		if (secure) {
+			timestamp = this.secureClientAccesses.get(client.getInetAddress());
+			this.secureClientAccesses.put(client.getInetAddress(), currentTime);
+		} else {
+			timestamp = this.clientAccesses.get(client.getInetAddress());
+			this.clientAccesses.put(client.getInetAddress(), currentTime);
+		}
+
 		// Record client access
-		this.clientAccesses.put(client.getInetAddress(), currentTime);
 		if (timestamp != null && ((limit * 1000) + timestamp >= currentTime)) {
 			// "An incomming [sic] request that violates this rule will
 			// be closed immediately with no response."
@@ -509,7 +517,7 @@ public class Server {
 
 					// SUCCESS
 					command.getResource()
-					.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+							.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 					this.resources.put(command.getResource(), command.getResource().getOwner());
 					response = buildSuccessResponse();
 
@@ -548,7 +556,6 @@ public class Server {
 			// Count how many matching resources there are
 			int count = 0;
 
-			// TODO AF Is there a better way than iterating over the whole map?
 			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 				Resource resource = entry.getKey();
 				String owner = entry.getValue();
@@ -780,8 +787,6 @@ public class Server {
 				} else {
 					int foundResources = 0;
 
-					// TODO AF Is there a better way than iterating over the
-					// whole map?
 					for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
 						Resource resource = entry.getKey();
 						String owner = entry.getValue();
@@ -882,7 +887,7 @@ public class Server {
 						}
 
 						command.getResource()
-						.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+								.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
 						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
@@ -966,27 +971,27 @@ public class Server {
 
 			sendResponse(buildSuccessResponseWithId(id), output);
 
+			// According to Aaron on the discussion board: "Do not respond with
+			// existing resources."
 			int count = 0;
-			for (ConcurrentHashMap.Entry<Resource, String> entry : this.resources.entrySet()) {
-				Resource resource = entry.getKey();
-				String owner = entry.getValue();
-
-				if (isMatchingResource(command.getResourceTemplate(), resource)) {
-					count++;
-
-					// "The server will never reveal the owner of a resource in
-					// a response. If a resource has an owner then it will be
-					// replaced with the "*" character."
-					if (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
-						resource.setOwner(Resource.HIDDEN_OWNER);
-					}
-
-					sendString(resource.toJson(), output);
-
-					// Reset owner
-					resource.setOwner(owner);
-				}
-			}
+			/*
+			 * for (ConcurrentHashMap.Entry<Resource, String> entry :
+			 * this.resources.entrySet()) { Resource resource = entry.getKey();
+			 * String owner = entry.getValue();
+			 * 
+			 * if (isMatchingResource(command.getResourceTemplate(), resource))
+			 * { count++;
+			 * 
+			 * // "The server will never reveal the owner of a resource in // a
+			 * response. If a resource has an owner then it will be // replaced
+			 * with the "*" character." if
+			 * (!resource.getSafeOwner().equals(Resource.DEFAULT_OWNER)) {
+			 * resource.setOwner(Resource.HIDDEN_OWNER); }
+			 * 
+			 * sendString(resource.toJson(), output);
+			 * 
+			 * // Reset owner resource.setOwner(owner); } }
+			 */
 
 			this.subscriptionResultCount.put(socket, count);
 
@@ -1018,9 +1023,6 @@ public class Server {
 
 		// "Relay field is set to false"
 		command.setRelay(false);
-
-		// TODO @Huge&Annie Forward subscription to only secure or unsecure
-		// servers depending on security of socket
 
 		// Forward subscription to all servers in servers list
 		ArrayList<SubscriptionRelayThread> threads = new ArrayList<>();
@@ -1312,7 +1314,8 @@ public class Server {
 				logger.debug("Randomly selected server " + randomServer.getHostname() + ":" + randomServer.getPort());
 				if (this.source == null || !this.source.equals(randomServer)) {
 					// Make servers JSON appropriate
-					String serversAsString = serverArgs.getSafeHost() + ":" + (secure ? serverArgs.getSafeSport() : serverArgs.getSafePort()) + ",";
+					String serversAsString = serverArgs.getSafeHost() + ":"
+							+ (secure ? serverArgs.getSafeSport() : serverArgs.getSafePort()) + ",";
 					for (ConcurrentHashMap.Entry<ServerInfo, Boolean> entry : serverList.entrySet()) {
 						ServerInfo serverInfo = entry.getKey();
 
@@ -1332,14 +1335,8 @@ public class Server {
 					// "... and initiates an EXCHANGE command with it."
 					String[] args = { "-" + ClientArgs.EXCHANGE_OPTION, "-" + ClientArgs.SERVERS_OPTION,
 							serversAsString, secureString };
-					// , secureString, "-port",
-					// Integer.toString(randomServer.getPort()), "-host",
-					// randomServer.getHostname() };
-
 					ClientArgs exchangeArgs = new ClientArgs(args);
 					Command command = new Command().buildExchange(exchangeArgs);
-
-					// Client.main(args);
 
 					try {
 						Socket socket = null;
