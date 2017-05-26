@@ -10,9 +10,17 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -68,23 +76,41 @@ public class Client {
 				logger.info("Connecting to host " + serverInfo.getHostname() + " at port " + serverInfo.getPort());
 
 				if (clientArgs.hasOption(ClientArgs.SECURE_OPTION)) {
-
 					// Create secure socket
 
-					// Location of the Java keystore file containing the
-					// collection of
-					// certificates trusted by this application (trust store).
-					System.setProperty("javax.net.ssl.trustStore", "clientKeystore/keystore.jks");
-
 					// Debug option
-					//System.setProperty("javax.net.debug","all");
+					System.setProperty("javax.net.debug", "all");
+					try {
+
+						TrustManagerFactory trustManagerFactory = TrustManagerFactory
+								.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+
+						KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+						InputStream keystoreStream = Client.class.getClassLoader()
+								.getResourceAsStream("clientKeystore.jks");
+						keystore.load(keystoreStream, "somePassword".toCharArray());
+
+						trustManagerFactory.init(keystore);
+						TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+
+						SSLContext ctx = SSLContext.getInstance("TLSv1.2");
+						ctx.init(null, trustManagers, null);
+						SSLContext.setDefault(ctx);
+					} catch (NoSuchAlgorithmException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					} catch (KeyStoreException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					} catch (CertificateException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					} catch (KeyManagementException e) {
+						logger.error(e.getClass().getName() + " " + e.getMessage());
+					}
 
 					// Create SSL socket and connect it to the remote server
 					SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
 					this.socket = (SSLSocket) sslsocketfactory.createSocket(serverInfo.getHostname(),
 							serverInfo.getPort());
 				} else {
-
 					// Create insecure socket
 					this.socket = new Socket(serverInfo.getHostname(), serverInfo.getPort());
 				}

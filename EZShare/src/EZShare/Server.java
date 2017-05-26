@@ -5,16 +5,21 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
-
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import javax.net.ServerSocketFactory;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -22,7 +27,12 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -170,22 +180,41 @@ public class Server {
 	 * Listens for secure connections
 	 */
 	public void secureListen() {
-
-		// Specify the keystore details (this can be specified as VM arguments
-		// as well)
-		// the keystore file contains an application's own certificate and
-		// private key
-		System.setProperty("javax.net.ssl.keyStore", "serverKeystore/keystore.jks");
-		// Password to access the private key from the keystore file
-		System.setProperty("javax.net.ssl.keyStorePassword", "somePassword");
-		System.setProperty("javax.net.ssl.trustStore", "serverKeystore/keystore.jks");
-
-		// Enable debugging to view the handshake and communication which
-		// happens between the SSLClient and the SSLServer
-		// System.setProperty("javax.net.debug","all");
+		System.setProperty("javax.net.debug", "all");
 
 		try {
+			KeyManagerFactory keyManagerFactory = KeyManagerFactory
+					.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory
+					.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+			InputStream keystoreStream = Server.class.getClassLoader().getResourceAsStream("serverKeystore.jks");
+			keystore.load(keystoreStream, "somePassword".toCharArray());
 
+			trustManagerFactory.init(keystore);
+			TrustManager[] trustManagers = trustManagerFactory.getTrustManagers();
+
+			keyManagerFactory.init(keystore, "somePassword".toCharArray());
+			KeyManager[] keyManagers = keyManagerFactory.getKeyManagers();
+
+			SSLContext ctx = SSLContext.getInstance("TLSv1.2");
+			ctx.init(keyManagers, trustManagers, null);
+			SSLContext.setDefault(ctx);
+		} catch (KeyStoreException e) {
+			throw new RuntimeException(e);
+		} catch (KeyManagementException e) {
+			throw new RuntimeException(e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException(e);
+		} catch (CertificateException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} catch (UnrecoverableKeyException e) {
+			e.printStackTrace();
+		}
+
+		try {
 			InetAddress inetAddress = InetAddress.getByName(this.serverArgs.getSafeHost());
 
 			SSLServerSocketFactory sslserversocketfactory = (SSLServerSocketFactory) SSLServerSocketFactory
@@ -214,6 +243,7 @@ public class Server {
 			}
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
