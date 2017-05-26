@@ -180,7 +180,9 @@ public class Server {
 	 * Listens for secure connections
 	 */
 	public void secureListen() {
-		System.setProperty("javax.net.debug", "all");
+		if (serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
+			System.setProperty("javax.net.debug", "all");
+		}
 
 		try {
 			KeyManagerFactory keyManagerFactory = KeyManagerFactory
@@ -201,17 +203,17 @@ public class Server {
 			ctx.init(keyManagers, trustManagers, null);
 			SSLContext.setDefault(ctx);
 		} catch (KeyStoreException e) {
-			throw new RuntimeException(e);
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (KeyManagementException e) {
-			throw new RuntimeException(e);
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (CertificateException e) {
-			throw new RuntimeException(e);
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		} catch (UnrecoverableKeyException e) {
-			e.printStackTrace();
+			logger.error(e.getClass().getName() + " " + e.getMessage());
 		}
 
 		try {
@@ -243,7 +245,6 @@ public class Server {
 			}
 		} catch (IOException e) {
 			logger.error(e.getClass().getName() + " " + e.getMessage());
-			e.printStackTrace();
 		}
 	}
 

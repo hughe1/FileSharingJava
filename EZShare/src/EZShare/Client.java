@@ -78,8 +78,10 @@ public class Client {
 				if (clientArgs.hasOption(ClientArgs.SECURE_OPTION)) {
 					// Create secure socket
 
-					// Debug option
-					System.setProperty("javax.net.debug", "all");
+					if (clientArgs.hasOption(ClientArgs.DEBUG_OPTION)) {
+						System.setProperty("javax.net.debug", "all");
+					}
+					
 					try {
 
 						TrustManagerFactory trustManagerFactory = TrustManagerFactory
