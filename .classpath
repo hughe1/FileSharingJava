@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="EZShare/src"/>
+	<classpathentry kind="src" path="TestCLI/src"/>
+	<classpathentry kind="lib" path="EZShare/lib/commons-cli-1.4.jar"/>
+	<classpathentry kind="lib" path="EZShare/lib/commons-lang3-3.5.jar"/>
+	<classpathentry kind="lib" path="EZShare/lib/gson-2.8.0.jar"/>
+	<classpathentry kind="lib" path="EZShare/lib/json-simple-1.1.1.jar"/>
+	<classpathentry kind="lib" path="TestCLI/jar/commons-cli-1.4.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="EZShare/lib/log4j-api-2.8.1.jar"/>
+	<classpathentry kind="lib" path="EZShare/lib/log4j-core-2.8.1.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
