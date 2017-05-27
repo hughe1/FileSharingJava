@@ -1,0 +1,434 @@
+Server used: -host 130.56.251.227 
+Insecure port used: -port 2222
+Secure port used: -port 1234
+
+Tests Completed: 
+
+** PUBLISH **
+
+-publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+RECEIVED: {"response":"success"}
+OK - secure publish
+
+-publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -secure -debug
+[ERROR] - javax.net.ssl.SSLHandshakeException Remote host closed connection during handshake
+OK - attempting to make secure connection over insecure port
+
+-publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -debug
+[ERROR] - java.io.EOFException null
+OK - attempting to make secure connection without secure option set
+
+-publish -channel ch -owner a -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK - insecure publish
+
+-publish -channel ch -owner b -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+RECEIVED: {"response":"error","errorMessage":"cannot publish resource"}
+OK - secure publish, same underlying resource, does not override rule regarding primary key
+
+
+** REMOVE **
+
+-remove -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK - insecure remove ok
+
+-remove -channel ch -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -debug
+[ERROR] - java.io.EOFException null
+OK - secure flag not set
+
+-remove -channel ch -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -debug -secure
+[ERROR] - Error: cannot remove resource
+OK - wrong owner
+
+-remove -channel ch -owner a -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -debug -secure
+RECEIVED: {"response":"success"}
+OK - secure remove
+
+-remove -name fileb -owner b -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug -secret secret
+RECEIVED: {"response":"success"}
+OK - ran after SHARE
+
+
+** SHARE **
+-share -name fileb -owner b -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug -secret secret
+RECEIVED: {"response":"success"}
+OK - secure share
+
+-share -name fileb -owner b -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 2222 -debug -secret secret
+RECEIVED: {"response":"success"}
+OK - insecure share + over-write
+
+-share -name fileb -owner a -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug -secret secret
+[ERROR] - Error: cannot share resource
+OK - existing uri in channel
+
+-share -name fileb -owner b -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug -secret 1234
+RECEIVED: {"response":"error","errorMessage":"incorrect secret"}
+OK
+
+
+
+** QUERY **
+Setup:
+java -cp ezshare.jar EZShare.Client -publish -channel 1 -owner a -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -channel 2 -owner b -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name ab -tags a,b -uri http://a.b.com -host 130.56.251.227 -port 1234 -secure -debug
+java -cp ezshare.jar EZShare.Client -publish -owner b -name wiki -tags b -uri http://www.wikipedia.com -host 130.56.251.227 -port 1234 -secure -debug
+java -cp ezshare.jar EZShare.Client -publish -channel 3 -owner c -name reddit -description "Something here" -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+
+java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 1234 -secure -debug
+27/05/2017 12:28:30.895 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 12:28:30.895 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 12:28:30.909 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.909 - [EZShare.Client.main] - [INFO] - {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.910 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.910 - [EZShare.Client.main] - [INFO] - {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.910 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"fileb","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"*","ezserver":"130.56.251.227:2222","resourceSize":10}
+27/05/2017 12:28:30.910 - [EZShare.Client.main] - [INFO] - {"name":"fileb","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"*","ezserver":"130.56.251.227:2222","resourceSize":10}
+27/05/2017 12:28:30.911 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.911 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:28:30.911 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":4}
+27/05/2017 12:28:30.913 - [EZShare.Client.main] - [INFO] - Query finished. Found 4 results.
+OK
+
+java -cp ezshare.jar EZShare.Client -query -host 130.56.251.227 -port 1234 -secure -debug -tags a
+27/05/2017 12:32:54.772 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 12:32:54.772 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 12:32:54.777 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:32:54.778 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 12:32:54.778 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+27/05/2017 12:32:54.781 - [EZShare.Client.main] - [INFO] - Query finished. Found 1 results.
+OK
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -tags b -owner a
+27/05/2017 12:34:07.725 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 12:34:07.726 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 12:34:07.740 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":0}
+27/05/2017 12:34:07.743 - [EZShare.Client.main] - [INFO] - Query finished. Found 0 results.
+OK
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a
+OK - no owner a in public channel
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a -channel 1
+OK
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a -channel 1 -uri "reddit.com"
+OK - URI not exact match
+
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a -channel 1 -name "red"
+OK - AND contains substring of name
+
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a -channel 1 -name "blue"
+OK - No results
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -owner a -channel 1 tags b
+OK - Zero results
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -channel 3 -description "Something"
+OK - description as sub-string, case sensitive
+
+-query -host 130.56.251.227 -port 1234 -secure -debug -channel 3 -description "Nothing" -name "red"
+OK - description not substring but name is
+
+
+
+** FETCH ** 
+Setup 
+java -cp ezshare.jar EZShare.Client -share -name fileb -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug -secret secret
+java -cp ezshare.jar EZShare.Client -publish -name reddit -uri http://www.reddit.com -host 130.56.251.227 -port 2222 -debug
+
+java -cp ezshare.jar EZShare.Client -fetch -host 130.56.251.227 -port 1234 -secure -debug
+OK 
+
+java -cp ezshare.jar EZShare.Client -fetch -uri idonotexist -host 130.56.251.227 -port 1234 -secure -debug
+OK
+
+java -cp ezshare.jar EZShare.Client -fetch -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+OK
+
+java -cp ezshare.jar EZShare.Client -fetch -uri file:///home/ubuntu/test_file.txt -host 130.56.251.227 -port 1234 -secure -debug
+27/05/2017 12:47:24.928 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 12:47:24.929 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 12:47:24.934 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"fileb","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"","ezserver":"130.56.251.227:2222","resourceSize":10}
+27/05/2017 12:47:24.937 - [EZShare.Client.main] - [INFO] - Downloading test_file.txt
+27/05/2017 12:47:24.937 - [EZShare.Client.main] - [INFO] - ...
+27/05/2017 12:47:24.938 - [EZShare.Client.main] - [DEBUG] - Downloaded: 10 bytes, remaining: 0 bytes
+27/05/2017 12:47:24.938 - [EZShare.Client.main] - [INFO] - Download complete!
+27/05/2017 12:47:24.938 - [EZShare.Client.main] - [INFO] - Your file is located at /home/anya/Documents/Uni/Y2S1/DS/Project1/repos/master/test_file.txt
+27/05/2017 12:47:24.939 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+OK
+
+
+** EXCHANGE ** 
+Server used: local and also -host 130.56.251.78 
+Insecure port used: -port 2222
+Secure port used: -port 1234
+
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:2222 -host 130.56.251.78 -port 2222 -debug
+RECEIVED: {"response":"success"}
+OK - insecure server exchange
+
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:1234 -secure -debug
+27/05/2017 14:44:02.139 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:44:02.161 - [EZShare.Client.main] - [INFO] - Connecting to host anya-pc at port 3781
+27/05/2017 14:44:02.221 - [EZShare.Client.main] - [INFO] - Sending EXCHANGE command...
+27/05/2017 14:44:02.348 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"EXCHANGE","serverList":[{"hostname":"130.56.251.227","port":1234}]}
+27/05/2017 14:44:02.348 - [EZShare.Client.main] - [INFO] - EXCHANGE command sent. Waiting for response..
+27/05/2017 14:44:02.349 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:44:02.350 - [EZShare.Client.main] - [INFO] - Success!
+OK - secure server exchange
+
+** SERVER INTERACTIONS **
+27/05/2017 14:45:14.950 - [EZShare.Server$ExchangeJob.Timer-0] - [INFO] - Exchanging insecure server list...
+27/05/2017 14:45:14.951 - [EZShare.Server$ExchangeJob.Timer-0] - [DEBUG] - Randomly selected server 130.56.251.227:2222
+27/05/2017 14:45:14.985 - [EZShare.Server.Timer-0] - [DEBUG] - SENT: {"command":"EXCHANGE","serverList":[{"hostname":"anya-pc","port":3780}]}
+27/05/2017 14:45:15.019 - [EZShare.Server.Timer-0] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:45:15.019 - [EZShare.Server$ExchangeJob.Timer-0] - [INFO] - Exchanging secure server list...
+27/05/2017 14:45:15.019 - [EZShare.Server$ExchangeJob.Timer-0] - [DEBUG] - Randomly selected server 130.56.251.227:1234
+27/05/2017 14:45:15.123 - [EZShare.Server.Timer-0] - [DEBUG] - SENT: {"command":"EXCHANGE","serverList":[{"hostname":"anya-pc","port":3781}]}
+27/05/2017 14:45:15.229 - [EZShare.Server.Timer-0] - [DEBUG] - RECEIVED: {"response":"success"}
+OK - separate exchange for secure & insecure server list, only secure exchanged to secure servers known
+
+
+** QUERY RELAY **
+Set up: as above
+-publish -name local -uri http://www.local_publish.com -debug
+
+java -cp ezshare.jar EZShare.Client -query -host 130.56.251.78 -port 1234 -secure -debug
+27/05/2017 14:22:31.707 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:22:31.729 - [EZShare.Client.main] - [INFO] - Connecting to host 130.56.251.78 at port 1234
+27/05/2017 14:22:31.822 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+27/05/2017 14:22:32.124 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+27/05/2017 14:22:32.124 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+27/05/2017 14:22:32.170 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:22:32.171 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 14:22:42.205 - [EZShare.Client.main] - [ERROR] - java.net.SocketTimeoutException Read timed out
+
+Server side, when tested on local:
+27/05/2017 14:25:26.239 - [EZShare.Server.Thread-1] - [INFO] - Received secure request
+27/05/2017 14:25:26.404 - [EZShare.Server.Thread-5] - [DEBUG] - RECEIVED: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+27/05/2017 14:25:26.405 - [EZShare.Server.Thread-5] - [DEBUG] - Processing QUERY command
+27/05/2017 14:25:26.406 - [EZShare.Server.Thread-5] - [DEBUG] - SENT: {"response":"success"}
+27/05/2017 14:25:26.407 - [EZShare.Server.Thread-5] - [DEBUG] - Relaying query...
+
+OK -FIXED - relay on server end hangs when no insecure server has previouly been exchanged
+
+java -cp ezshare.jar EZShare.Client -query -debug -relay false -secure
+27/05/2017 14:37:29.289 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:37:29.310 - [EZShare.Client.main] - [INFO] - Connecting to host anya-pc at port 3781
+27/05/2017 14:37:29.370 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+27/05/2017 14:37:29.505 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":false,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+27/05/2017 14:37:29.505 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+27/05/2017 14:37:29.507 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:37:29.507 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 14:37:29.508 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"local","tags":[],"description":"","uri":"http://www.local_publish.com","channel":"","owner":"","ezserver":"anya-pc:3780"}
+27/05/2017 14:37:29.508 - [EZShare.Client.main] - [INFO] - {"name":"local","tags":[],"description":"","uri":"http://www.local_publish.com","channel":"","owner":"","ezserver":"anya-pc:3780"}
+27/05/2017 14:37:29.508 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":1}
+27/05/2017 14:37:29.511 - [EZShare.Client.main] - [INFO] - Query finished. Found 1 results.
+OK - turning off relay does not cause same problem as above
+
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:2222 -debug
+java -cp ezshare.jar EZShare.Client -query -debug
+27/05/2017 14:34:41.332 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:34:41.333 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 14:34:41.333 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"local","tags":[],"description":"","uri":"http://www.local_publish.com","channel":"","owner":"","ezserver":"anya-pc:3780"}
+27/05/2017 14:34:41.333 - [EZShare.Client.main] - [INFO] - {"name":"local","tags":[],"description":"","uri":"http://www.local_publish.com","channel":"","owner":"","ezserver":"anya-pc:3780"}
+27/05/2017 14:34:41.421 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.422 - [EZShare.Client.main] - [INFO] - {"name":"wiki","tags":["b"],"description":"","uri":"http://www.wikipedia.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.422 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.422 - [EZShare.Client.main] - [INFO] - {"name":"reddit","tags":[],"description":"","uri":"http://www.reddit.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.423 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"fileb","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"","ezserver":"130.56.251.227:2222","resourceSize":10}
+27/05/2017 14:34:41.423 - [EZShare.Client.main] - [INFO] - {"name":"fileb","tags":[],"description":"","uri":"file:///home/ubuntu/test_file.txt","channel":"","owner":"","ezserver":"130.56.251.227:2222","resourceSize":10}
+27/05/2017 14:34:41.423 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.423 - [EZShare.Client.main] - [INFO] - {"name":"ab","tags":["a","b"],"description":"","uri":"http://a.b.com","channel":"","owner":"*","ezserver":"130.56.251.227:2222"}
+27/05/2017 14:34:41.424 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":5}
+27/05/2017 14:34:41.427 - [EZShare.Client.main] - [INFO] - Query finished. Found 5 results.
+OK - insecure OK, returned local result & all results from 130.56.251.227
+
+** ECHANGE INTERVAL **
+EZShare.Server -exchangeinterval 10 -secure -debug
+OK
+
+java -cp ezshare.jar EZShare.Server -connectionintervallimit 1000 -debug
+java -cp ezshare.jar EZShare.Client -query -debug
+27/05/2017 14:46:53.793 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:46:53.814 - [EZShare.Client.main] - [INFO] - Connecting to host anya-pc at port 3780
+27/05/2017 14:46:53.817 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+27/05/2017 14:46:53.824 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+27/05/2017 14:46:53.824 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+27/05/2017 14:46:53.824 - [EZShare.Client.main] - [ERROR] - java.io.EOFException null
+OK - drop connection if too frequent
+
+[anya@anya-pc master]$ java -cp ezshare.jar EZShare.Client -query -secure -debug
+27/05/2017 14:47:01.871 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:47:01.893 - [EZShare.Client.main] - [INFO] - Connecting to host anya-pc at port 3781
+27/05/2017 14:47:01.951 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+27/05/2017 14:47:02.119 - [EZShare.Client.main] - [DEBUG] - SENT: {"command":"QUERY","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"","ezserver":""}}
+27/05/2017 14:47:02.119 - [EZShare.Client.main] - [INFO] - QUERY command sent. Waiting for response..
+27/05/2017 14:47:02.123 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"response":"success"}
+27/05/2017 14:47:02.123 - [EZShare.Client.main] - [INFO] - Success!
+27/05/2017 14:47:02.124 - [EZShare.Client.main] - [DEBUG] - RECEIVED: {"resultSize":0}
+27/05/2017 14:47:02.126 - [EZShare.Client.main] - [INFO] - Query finished. Found 0 results.
+OK - gives secure & insecure connections have separate connection interval check
+
+java -cp ezshare.jar EZShare.Client -query -secure -debug
+27/05/2017 14:48:32.675 - [EZShare.Client.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:48:32.697 - [EZShare.Client.main] - [INFO] - Connecting to host anya-pc at port 3781
+27/05/2017 14:48:32.755 - [EZShare.Client.main] - [INFO] - Sending QUERY command...
+27/05/2017 14:48:32.766 - [EZShare.Client.main] - [ERROR] - javax.net.ssl.SSLHandshakeException Remote host closed connection during handshake
+OK - drop connection on secure if too frequent
+
+
+** SERVER SET UP **
+java -cp ezshare.jar EZShare.Server -debug -sport 1234
+27/05/2017 14:49:41.865 - [EZShare.Server.main] - [DEBUG] - Debugger enabled
+27/05/2017 14:49:41.866 - [EZShare.Server.main] - [INFO] - Using secret a50ae823-856a-47a0-b55a-6720c77088b8
+27/05/2017 14:49:41.867 - [EZShare.Server.main] - [INFO] - Using advertised hostname anya-pc
+27/05/2017 14:49:41.867 - [EZShare.Server.main] - [INFO] - Bound to insecure port 3780
+27/05/2017 14:49:41.867 - [EZShare.Server.main] - [INFO] - Bound to secure port 1234
+OK - can set secure port only, query test after OK
+
+** SUBSCRIBE & UNSUBSCRIBE **
+Set up:
+Secure XWqP66
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 2222 -debug -subscribe
+
+Insecure bcsacX
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+27/05/2017 16:32:32.881 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.78:2222"}
+OK - response for both subs, random string for name
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+OK - no response since server detail not exchanged in advance
+
+One way relay -insecure
+Secure publish
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:2222 -host 130.56.251.78 -port 2222 -debug
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+
+27/05/2017 16:34:16.619 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+27/05/2017 16:34:16.652 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+OK - FIXED - result for secure sub XWqP66 only but showing unsecured server?
+OK - FIXED - double results?
+OK - only insecure sub receiving update after code fix (secure sub not relayed since server doesn't know the port yet)
+
+Exchange secure port now
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:1234 -host 130.56.251.78 -port 1234 -debug -secure
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+OK -FIXED - both sec & insec client sees update, however insecure port showing in response for secure client
+
+Enter to unsubscribe
+27/05/2017 18:01:25.777 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"resultSize":4}
+27/05/2017 18:01:25.784 - [EZShare.Client$1.SubscriptionHandler] - [INFO] - Successfully unsubscribed. Found 4 results.
+OK
+
+RESTARTED SERVER
+Set up:
+Insecure
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 2222 -debug -subscribe
+
+Secure
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure
+
+Exchange only secure
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:1234 -host 130.56.251.78 -port 1234 -debug -secure
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+27/05/2017 18:14:08.980 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.227:1234"}
+OK - only secure receives update, correct port number
+
+Exchange secure as well...
+java -cp ezshare.jar EZShare.Client -exchange -servers 130.56.251.227:2222 -host 130.56.251.78 -port 2222 -debug
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+
+Insecure:
+27/05/2017 18:15:45.209 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.227:2222"}
+OK - correct port
+
+Secure:
+27/05/2017 18:15:45.212 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"subtest","tags":[],"description":"","uri":"http://pubtest.com","channel":"","owner":"","ezserver":"130.56.251.227:1234"}
+OK - correct port, even after republishing with insecure publish
+
+Template filter - new client
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure -channel 3 -owner c
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.227 -port 1234 -secure -publish -name subtest -uri http://pubtest.com
+OK - template filters correctly, no update
+
+Relay
+java -cp ezshare.jar EZShare.Client -publish -channel 3 -owner c -name reddit -description "Something here" -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+OK - FIXED - no update?
+
+Local
+java -cp ezshare.jar EZShare.Client -publish -channel 3 -owner c -name reddit -description "Something here" -uri http://www.reddit.com -host 130.56.251.78 -port 1234 -secure -debug
+OK - FIXED - no update? A problem with resource template maybe?
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78port 1234 -debug -subscribe -secure -name red
+OK - not name issue
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78port 1234 -debug -subscribe -secure -name red
+OK - not tags issue
+
+SUBSCRIBE:
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure -owner alex
+PUBLISH:
+With relay:
+java -cp ezshare.jar EZShare.Client -publish -name reddit -description "Something here" -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+Withour relay:
+java -cp ezshare.jar EZShare.Client -publish -name reddit -description "Something here" -uri http://www.reddit.com -host 130.56.251.78 -port 1234 -secure -debug
+
+27/05/2017 18:46:54.803 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"reddit","tags":[],"description":"Something here","uri":"http://www.reddit.com","channel":"","owner":"","ezserver":"130.56.251.227:1234"}
+
+OK - FIXED - Got result when none should be returned...(no matching owner) both with & without relay
+
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure -owner a
+java -cp ezshare.jar EZShare.Client -publish -channel alex -owner alex -name reddit -description "Nothing here" -uri http://www.reddit.com -host 130.56.251.227 -port 1234 -secure -debug
+OK - no result, owner must be exact match
+
+java -cp ezshare.jar EZShare.Client -publish -name puba -description "Something here" -uri http://www.puba.com -host 130.56.251.227 -port 1234 -secure -debug -owner a
+27/05/2017 19:14:38.638 - [EZShare.Client.SubscriptionHandler] - [DEBUG] - RECEIVED: {"name":"puba","tags":[],"description":"Something here","uri":"http://www.puba.com","channel":"","owner":"*","ezserver":"130.56.251.227:1234"}
+OK - correct display and port
+
+Double filter
+java -cp ezshare.jar EZShare.Client -host 130.56.251.78 -port 1234 -debug -subscribe -secure -owner a -description Nothing
+
+java -cp ezshare.jar EZShare.Client -publish -name puba -description "Something here" -uri http://www.puba.com -host 130.56.251.227 -port 1234 -secure -debug -owner a
+OK - no result (description not substring) - description "thing" returns result
+
+Concurrent subscribe
+OK - tested, differentiated results
+
+
+** BAD COMMAND **
+{"command":"SUBSCRIBE","resource":{"name":"reddit","description":"","uri":"http://www.missing_owner.com","channel":"","ezserver":""}}
+27/05/2017 19:20:52.885 - [Test.BadCommandsTest.main] - [INFO] - Connecting to host 130.56.251.227 at port 2222
+27/05/2017 19:20:52.922 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"SUBSCRIBE","resource":{"name":"reddit","description":"","uri":"http://www.missing_owner.com","channel":"","ezserver":""}}
+27/05/2017 19:20:52.971 - [Test.BadCommandsTest.main] - [DEBUG] - RECEIVED: {"response":"error","errorMessage":"missing resource template"}
+27/05/2017 19:20:52.997 - [Test.BadCommandsTest.main] - [ERROR] - Error: missing resource template
+OK
+
+{"command":"SUBSCRIBE","id":"5H8zW9","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"3","owner":"c","ezserver":""}}
+OK - none string ID not rejected
+
+{"command":"SUBSCRIBE","id":"test","relay":true}
+27/05/2017 19:28:28.236 - [Test.BadCommandsTest.main] - [INFO] - Connecting to host 130.56.251.227 at port 2222
+27/05/2017 19:28:28.274 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"SUBSCRIBE","id":"test","relay":true}
+27/05/2017 19:28:28.311 - [Test.BadCommandsTest.main] - [DEBUG] - RECEIVED: {"response":"error","errorMessage":"missing resource template"}
+27/05/2017 19:28:28.339 - [Test.BadCommandsTest.main] - [ERROR] - Error: missing resource template
+OK
+
+{"command":"SUBSCRIBE","id":"test","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"*","ezserver":""}}
+27/05/2017 19:29:00.921 - [Test.BadCommandsTest.main] - [INFO] - Connecting to host 130.56.251.227 at port 2222
+27/05/2017 19:29:00.959 - [Test.BadCommandsTest.main] - [DEBUG] - SENT: {"command":"SUBSCRIBE","id":"test","relay":true,"resourceTemplate":{"name":"","tags":[],"description":"","uri":"","channel":"","owner":"*","ezserver":""}}
+27/05/2017 19:29:00.997 - [Test.BadCommandsTest.main] - [DEBUG] - RECEIVED: {"response":"error","errorMessage":"invalid resourceTemplate"}
+27/05/2017 19:29:01.032 - [Test.BadCommandsTest.main] - [ERROR] - Error: invalid resourceTemplate
+OK

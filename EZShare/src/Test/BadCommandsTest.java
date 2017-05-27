@@ -30,7 +30,7 @@ public class BadCommandsTest {
 		//String bad_command = "{\"command\":\"PUBLISH\",\"resource\":{\"name\":\"reddit\",\"tags\":[],\"description\":\"\",\"uri\":\"http://www.reddit.com\",\"channel\":\"\",\"owner\":\"\",\"ezserver\":\"\"}}";
 		//String bad_command = "{\"command\":\"EXCHANGE\",\"serverList\":[{\"hostname\":\"115.146.85.165\",\"port\":\"not_number\"}]}";
 
-		String bad_command = "{\"command\":\"PUBLISH\",\"resource\":{\"name\":\"reddit\",\"description\":\"\",\"uri\":\"http://www.missing_owner.com\",\"channel\":\"\",\"ezserver\":\"\"}}";
+		String bad_command = "{\"command\":\"SUBSCRIBE\",\"id\":\"test\",\"relay\":true,\"resourceTemplate\":{\"name\":\"\",\"tags\":[],\"description\":\"\",\"uri\":\"\",\"channel\":\"\",\"owner\":\"*\",\"ezserver\":\"\"}}";
 	
 		
 		System.out.println(bad_command);
