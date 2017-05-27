@@ -754,32 +754,35 @@ public class Server {
 					for (ConcurrentHashMap.Entry<Socket, ArrayList<SubscriptionRelayThread>> entry : this.subscriptionRelays
 							.entrySet()) {
 						Socket socket = entry.getKey();
-						Resource resource = this.subscriptionTemplates.get(socket);
-						String id = this.subscriptions.get(socket);
 
-						Command subCommand = new Command();
-						subCommand.setCommand(Command.SUBSCRIBE_COMMAND);
-						subCommand.setId(id);
-						subCommand.setRelay(false);
-						subCommand.setResourceTemplate(resource);
+						if ((!socket.getClass().equals(Socket.class) && secure)
+								|| (socket.getClass().equals(Socket.class) && !secure)) {
+							Resource resource = this.subscriptionTemplates.get(socket);
+							String id = this.subscriptions.get(socket);
 
-						try {
-							// Create a new thread for each ServerInfo object
-							SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo, subCommand,
-									new DataOutputStream(socket.getOutputStream()), socket, secure);
-							relayThread.start();
+							Command subCommand = new Command();
+							subCommand.setCommand(Command.SUBSCRIBE_COMMAND);
+							subCommand.setId(id);
+							subCommand.setRelay(false);
+							subCommand.setResourceTemplate(resource);
 
-							ArrayList<SubscriptionRelayThread> list = entry.getValue();
-							list.add(relayThread);
-							this.subscriptionRelays.put(socket, list);
-						} catch (IOException e) {
-							logger.error(e.getClass().getName() + " " + e.getMessage());
+							try {
+								// Create a new thread for each ServerInfo
+								// object
+								SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo,
+										subCommand, new DataOutputStream(socket.getOutputStream()), socket, secure);
+								relayThread.start();
+
+								ArrayList<SubscriptionRelayThread> list = entry.getValue();
+								list.add(relayThread);
+								this.subscriptionRelays.put(socket, list);
+							} catch (IOException e) {
+								logger.error(e.getClass().getName() + " " + e.getMessage());
+							}
 						}
-
 					}
 				}
 			}
-
 			sendResponse(buildSuccessResponse(), output);
 		}
 	}
