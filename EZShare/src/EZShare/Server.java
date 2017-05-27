@@ -637,14 +637,16 @@ public class Server {
 		// "Relay field is set to false"
 		command.setRelay(false);
 
-		final CountDownLatch latch = new CountDownLatch(this.servers.size());
 		final ArrayList<Integer> countArray = new ArrayList<>();
 
 		ConcurrentHashMap<ServerInfo, Boolean> serverList = null;
+		final CountDownLatch latch;
 		if (secure) {
 			serverList = this.secureServers;
+			latch = new CountDownLatch(this.secureServers.size());
 		} else {
 			serverList = this.servers;
+			latch = new CountDownLatch(this.servers.size());
 		}
 
 		// Forward query to all servers in servers list

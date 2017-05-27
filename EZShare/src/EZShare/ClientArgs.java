@@ -2,10 +2,11 @@ package EZShare;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.ParseException;
-
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -43,7 +44,8 @@ public class ClientArgs extends ArgsManager {
 	public static final Integer DEFAULT_PORT = 3780;
 	public static final Integer DEFAULT_SPORT = 3781;
 	public static final Boolean DEFAULT_RELAY = true;
-	public static final String DEFAULT_ID = "X";
+	// 6 character long random string to make it more human-readable for client user
+	public static final String DEFAULT_ID = RandomStringUtils.randomAlphanumeric(6);
 
 	/**
 	 * The static initializer adds all commands/options known to an EZShare
