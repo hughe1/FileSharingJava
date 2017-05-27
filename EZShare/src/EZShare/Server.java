@@ -323,16 +323,16 @@ public class Server {
 						processQueryCommand(command, output, secure);
 						break;
 					case Command.FETCH_COMMAND:
-						processFetchCommand(command, output, clientSocket.getOutputStream());
+						processFetchCommand(command, output, clientSocket.getOutputStream(), secure);
 						break;
 					case Command.EXCHANGE_COMMAND:
 						processExchangeCommand(command, output, secure);
 						break;
 					case Command.PUBLISH_COMMAND:
-						processPublishCommand(command, output);
+						processPublishCommand(command, output, secure);
 						break;
 					case Command.SHARE_COMMAND:
-						processShareCommand(command, output);
+						processShareCommand(command, output, secure);
 						break;
 					case Command.REMOVE_COMMAND:
 						processRemoveCommand(command, output);
@@ -514,7 +514,7 @@ public class Server {
 	 * @param output
 	 *            The DataOutputStream of the socket to send messages to
 	 */
-	private void processPublishCommand(Command command, DataOutputStream output) {
+	private void processPublishCommand(Command command, DataOutputStream output, boolean secure) {
 		logger.debug("Processing PUBLISH command");
 
 		Response response = buildErrorResponse(ERROR_CANNOT_PUBLISH_RESOURCE);
@@ -546,8 +546,8 @@ public class Server {
 					}
 
 					// SUCCESS
-					command.getResource()
-							.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+					command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":"
+							+ (secure ? this.serverArgs.getSafeSport() : this.serverArgs.getSafePort()));
 					this.resources.put(command.getResource(), command.getResource().getOwner());
 					response = buildSuccessResponse();
 
@@ -600,10 +600,18 @@ public class Server {
 						resource.setOwner(Resource.HIDDEN_OWNER);
 					}
 
+					// Setting the ezserver port value depending on if
+					// the current connection is secure or not
+					String ezserver = resource.getEzserver();
+					String ezserverIntermediate = this.serverArgs.getSafeHost() + ":"
+							+ (secure ? this.serverArgs.getSafeSport() : this.serverArgs.getSafePort());
+					resource.setEzserver(ezserverIntermediate);
+
 					sendString(resource.toJson(), output);
 
-					// Reset owner
+					// Reset owner & ezserver
 					resource.setOwner(owner);
+					resource.setEzserver(ezserver);
 				}
 			}
 
@@ -744,40 +752,45 @@ public class Server {
 						|| serverInfo.getPort() != serverArgs.getSafePort()) {
 					// Add server to server list
 
+					boolean serverExists;
 					if (secure) {
+						serverExists = secureServers.containsKey(serverInfo);
 						secureServers.put(serverInfo, true);
 					} else {
+						serverExists = servers.containsKey(serverInfo);
 						servers.put(serverInfo, true);
 					}
 
-					// Extend subscriptions to include these servers
-					for (ConcurrentHashMap.Entry<Socket, ArrayList<SubscriptionRelayThread>> entry : this.subscriptionRelays
-							.entrySet()) {
-						Socket socket = entry.getKey();
+					if (!serverExists) {
+						// Extend subscriptions to include these servers
+						for (ConcurrentHashMap.Entry<Socket, ArrayList<SubscriptionRelayThread>> entry : this.subscriptionRelays
+								.entrySet()) {
+							Socket socket = entry.getKey();
 
-						if ((!socket.getClass().equals(Socket.class) && secure)
-								|| (socket.getClass().equals(Socket.class) && !secure)) {
-							Resource resource = this.subscriptionTemplates.get(socket);
-							String id = this.subscriptions.get(socket);
+							if ((!socket.getClass().equals(Socket.class) && secure)
+									|| (socket.getClass().equals(Socket.class) && !secure)) {
+								Resource resource = this.subscriptionTemplates.get(socket);
+								String id = this.subscriptions.get(socket);
 
-							Command subCommand = new Command();
-							subCommand.setCommand(Command.SUBSCRIBE_COMMAND);
-							subCommand.setId(id);
-							subCommand.setRelay(false);
-							subCommand.setResourceTemplate(resource);
+								Command subCommand = new Command();
+								subCommand.setCommand(Command.SUBSCRIBE_COMMAND);
+								subCommand.setId(id);
+								subCommand.setRelay(false);
+								subCommand.setResourceTemplate(resource);
 
-							try {
-								// Create a new thread for each ServerInfo
-								// object
-								SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo,
-										subCommand, new DataOutputStream(socket.getOutputStream()), socket, secure);
-								relayThread.start();
+								try {
+									// Create a new thread for each ServerInfo
+									// object
+									SubscriptionRelayThread relayThread = new SubscriptionRelayThread(serverInfo,
+											subCommand, new DataOutputStream(socket.getOutputStream()), socket, secure);
+									relayThread.start();
 
-								ArrayList<SubscriptionRelayThread> list = entry.getValue();
-								list.add(relayThread);
-								this.subscriptionRelays.put(socket, list);
-							} catch (IOException e) {
-								logger.error(e.getClass().getName() + " " + e.getMessage());
+									ArrayList<SubscriptionRelayThread> list = entry.getValue();
+									list.add(relayThread);
+									this.subscriptionRelays.put(socket, list);
+								} catch (IOException e) {
+									logger.error(e.getClass().getName() + " " + e.getMessage());
+								}
 							}
 						}
 					}
@@ -797,7 +810,7 @@ public class Server {
 	 * @param os
 	 *            The OutputStream of the socket
 	 */
-	private void processFetchCommand(Command command, DataOutputStream output, OutputStream os) {
+	private void processFetchCommand(Command command, DataOutputStream output, OutputStream os, boolean secure) {
 		logger.debug("Processing FETCH command");
 
 		// Check for invalid resourceTemplate fields
@@ -842,10 +855,18 @@ public class Server {
 								resource.setOwner(Resource.HIDDEN_OWNER);
 							}
 
+							// Setting the ezserver port value depending on if
+							// the current connection is secure or not
+							String ezserver = resource.getEzserver();
+							String ezserverIntermediate = this.serverArgs.getSafeHost() + ":"
+									+ (secure ? this.serverArgs.getSafeSport() : this.serverArgs.getSafePort());
+							resource.setEzserver(ezserverIntermediate);
+
 							sendString(resource.toJson(), output);
 
-							// Reset owner
+							// Reset owner & ezserver
 							resource.setOwner(owner);
+							resource.setEzserver(ezserver);
 
 							this.sendFile(file, os);
 
@@ -873,7 +894,7 @@ public class Server {
 	 * @param output
 	 *            The DataOutputStream of the socket to send messages to
 	 */
-	private void processShareCommand(Command command, DataOutputStream output) {
+	private void processShareCommand(Command command, DataOutputStream output, boolean secure) {
 		logger.debug("Processing SHARE command");
 
 		Response response = buildErrorResponse(ERROR_CANNOT_SHARE_RESOURCE);
@@ -921,8 +942,8 @@ public class Server {
 							this.resources.remove(command.getResource());
 						}
 
-						command.getResource()
-								.setEzserver(this.serverArgs.getSafeHost() + ":" + this.serverArgs.getSafePort());
+						command.getResource().setEzserver(this.serverArgs.getSafeHost() + ":"
+								+ (secure ? this.serverArgs.getSafeSport() : this.serverArgs.getSafePort()));
 						command.getResource().setResourceSize(f.length());
 						this.resources.put(command.getResource(), command.getResource().getOwner());
 						response = buildSuccessResponse();
@@ -1220,6 +1241,14 @@ public class Server {
 					resource.setOwner(Resource.HIDDEN_OWNER);
 				}
 
+				// Setting the ezserver port value depending on if
+				// the current connection is secure or not
+				String ezserver = resource.getEzserver();
+				String ezserverIntermediate = this.serverArgs.getSafeHost() + ":"
+						+ (socket.getClass().equals(Socket.class) ? this.serverArgs.getSafePort()
+								: this.serverArgs.getSafeSport());
+				resource.setEzserver(ezserverIntermediate);
+
 				// Send matching resource to subscribed client
 				try {
 					DataOutputStream output = new DataOutputStream(socket.getOutputStream());
@@ -1228,8 +1257,9 @@ public class Server {
 					logger.error(e.getClass().getName() + " " + e.getMessage());
 				}
 
-				// Reset owner
+				// Reset owner & ezserver
 				resource.setOwner(owner);
+				resource.setEzserver(ezserver);
 			}
 		}
 	}
