@@ -294,6 +294,7 @@ public class Client {
 				try {
 					while (run) {
 						String fromServer = receiveString(inFromServer);
+						logger.info(fromServer);
 
 						if (fromServer.contains("resultSize")) {
 							Response response = new Response().fromJson(fromServer);
