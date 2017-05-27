@@ -180,9 +180,8 @@ public class Server {
 	 * Listens for secure connections
 	 */
 	public void secureListen() {
-		if (serverArgs.hasOption(ServerArgs.DEBUG_OPTION)) {
-			System.setProperty("javax.net.debug", "all");
-		}
+		// For debugging purposes only
+		// System.setProperty("javax.net.debug", "all");
 
 		try {
 			KeyManagerFactory keyManagerFactory = KeyManagerFactory
