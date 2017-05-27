@@ -110,13 +110,17 @@ public class Resource extends JsonModel {
 	public void setNullResourceFieldsToDefault() {
 		if (this.getChannel() == null) {
 			this.setChannel(Resource.DEFAULT_CHANNEL);
-		} else if (this.getDescription() == null) {
+		}
+		if (this.getDescription() == null) {
 			this.setDescription(Resource.DEFAULT_DESCRIPTION);
-		} else if (this.getName() == null) {
+		}
+		if (this.getName() == null) {
 			this.setName(Resource.DEFAULT_NAME);
-		} else if (this.getOwner() == null) {
+		}
+		if (this.getOwner() == null) {
 			this.setOwner(Resource.DEFAULT_OWNER);
-		} else if (this.getURI() == null) {
+		}
+		if (this.getURI() == null) {
 			this.setURI(Resource.DEFAULT_URI);
 		}
 	}

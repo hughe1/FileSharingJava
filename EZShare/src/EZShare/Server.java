@@ -639,6 +639,8 @@ public class Server {
 
 		// "The owner and channel information in the original query are
 		// both set to "" in the forwarded query"
+		String owner = command.getResourceTemplate().getOwner();
+		String channel = command.getResourceTemplate().getChannel();
 		command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
 		command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
 
@@ -728,6 +730,10 @@ public class Server {
 		for (int i : countArray) {
 			count += i;
 		}
+
+		// Resset template values
+		command.getResourceTemplate().setOwner(owner);
+		command.getResourceTemplate().setChannel(channel);
 
 		return count;
 	}
@@ -1074,6 +1080,8 @@ public class Server {
 
 		// "The owner and channel information in the original query are
 		// both set to "" in the forwarded query"
+		String owner = command.getResourceTemplate().getOwner();
+		String channel = command.getResourceTemplate().getChannel();
 		command.getResourceTemplate().setOwner(Resource.DEFAULT_OWNER);
 		command.getResourceTemplate().setChannel(Resource.DEFAULT_CHANNEL);
 
@@ -1102,6 +1110,10 @@ public class Server {
 		}
 
 		this.subscriptionRelays.put(socket, threads);
+
+		// Reset owner & channel
+		command.getResourceTemplate().setOwner(owner);
+		command.getResourceTemplate().setChannel(channel);
 	}
 
 	/**
